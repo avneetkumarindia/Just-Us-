@@ -1,0 +1,1414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- SECURITY BOUNCER: a club with exactly one guest and a very strict doorman. It refuses outside scripts, network calls, forms and base-tag tricks. 'unsafe-inline' stays because a single-file page must run its own inline script. Could go wrong: a server-sent header or script hash would be stricter, and a meta tag cannot stop clickjacking. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; base-uri 'none'; form-action 'none'">
+<!-- PRIVACY: no-referrer means that when she taps the Instagram link, Instagram is not told which page she came from. Even true love deserves a little mystery. -->
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#12030a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Our Date">
+<title>Will You Go On A Date With Me?</title>
+<style>
+/* ===== 1. DESIGN TOKENS =====
+   The wardrobe: every colour, corner size and font lives here once, so a mood change is one edit, not forty.
+   SIX COLOURS, each with one job: night (the page), wine (the cards), cream (the words), rose-gold (the accent), deep rose (the main answer buttons) and paper (the keepsake card only). Soft rose is a lighter rose for small accents on dark.
+   Left out on purpose: purple, neon, pure white, floating colour clouds and glowing shadows. The hearts that drift upward are the only thing on the page that moves on its own.
+   THREE CORNER SIZES: r1 (tiny tags), r2 (buttons, fields, chips) and r3 (cards). Nothing is a pill or a circle except the little dots.
+   Could go wrong: a colour typed directly further down will not follow these names, so search for the hex code before you rebrand. */
+:root{--night:#12030a;--wine:#2a0c17;--wine2:#38101f;--cream:#fde8e2;--gold:#f3a78f;--rose:#e2476f;--rose-deep:#a30f39;--paper:#f5e6d8;--ink:#3a0c1c;
+--edge:rgba(243,167,143,.6);--line:rgba(243,167,143,.28);--glass:rgba(255,255,255,.08);
+--r1:6px;--r2:10px;--r3:14px;
+--serif:Georgia,"Times New Roman",serif;--sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+*{box-sizing:border-box;margin:0}
+html,body{min-height:100%}
+body{font-family:var(--sans);color:var(--cream);background:var(--night);line-height:1.5;
+padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);overflow-x:hidden}
+/* BACKDROP: one still wash, black cherry at the top deepening a little toward the bottom. Nothing drifts and no coloured circles float behind the cards. position:fixed keeps it still while the page scrolls; pointer-events:none means it never steals a tap. */
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:linear-gradient(180deg,var(--night) 0%,#1f0810 100%)}
+/* SHINE: used once, on the big question. The headline is filled with a slow moving gradient (background-clip:text), like candlelight on silk. Could go wrong: without background-clip support the text would be invisible, so forced-colours mode (end of this file) turns it back into plain text. */
+.shine{background:linear-gradient(90deg,#fde8e2,#f3a78f,#e8658a,#fde8e2);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 9s linear infinite}
+@keyframes shine{to{background-position:300% 0}}
+::selection{background:var(--rose);color:#fff}
+#bg{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+/* THE STAGE: one centred column. It starts at the TOP (it is not centred up and down), so the progress dashes sit in exactly the same place on every step and the screen never jumps when she taps Next. The top padding grows a little on tall screens. */
+main{position:relative;z-index:1;width:100%;max-width:560px;margin:0 auto;padding:clamp(12px,2.6vh,34px) 16px 8px;display:flex;flex-direction:column}
+h1,h2{font-family:var(--serif);font-weight:400;line-height:1.15;letter-spacing:-.01em;text-wrap:balance}
+h1{font-size:clamp(1.75rem,7vw,2.5rem)}
+h2{font-size:clamp(1.5rem,6vw,2rem);margin-bottom:6px}
+p.sub{opacity:.78;margin:8px 0 14px;line-height:1.5}
+p.sub.fine{margin:12px 0 0;font-size:.85rem}
+/* ===== 2. CARDS: ONE SKELETON =====
+   Every screen is the same kind of card: the same wine colour, the same hairline border, the same corners, the same padding and the same heading position. Only the content changes. The one deliberate exception is the keepsake (#s5): it is paper, because it is the one thing she keeps.
+   Each card has two parts. .lede is the QUESTION side (heading and a line of help). .pane is the ANSWER side (fields, chips, buttons). On a phone they simply stack. From 900px wide they sit side by side, question left and answer right.
+   Only the card with .on is shown. Could go wrong: a new step with no matching id will simply never appear. */
+.card{display:none;padding:22px 20px;border-radius:var(--r3);background:var(--wine);border:1px solid var(--line);animation:rise .4s ease-out}
+.card.on{display:block}
+#s4{text-align:center}
+#s5{background:var(--paper);color:var(--ink);border-color:rgba(58,12,28,.25)}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+@keyframes beat{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+/* The Yes button's pulse is a ring that grows and fades. It is not a glow: nothing is drawn behind or under the button. */
+@keyframes pulseRing{0%{box-shadow:0 0 0 0 rgba(226,71,111,.55)}70%,100%{box-shadow:0 0 0 12px rgba(226,71,111,0)}}
+/* SHAKE: a polite 'hmm, not yet' wiggle when a required answer is missing. Never an error siren, just a raised eyebrow. */
+.shake{animation:shake .4s}
+/* WIDE SCREENS (900px and up): the stage widens, and every card splits into two equal columns. A card keeps the same width on every step, so nothing jumps sideways between steps. The short steps centre their answer side beside the question. */
+@media (min-width:900px){
+  main{max-width:1000px;padding:clamp(24px,7vh,90px) 32px 8px}
+  .card{padding:38px 44px}
+  .pane>:first-child{margin-top:0}
+  .lede>:last-child{margin-bottom:0}
+  .card.on{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:56px;align-items:start}
+  .lede,.pane{min-width:0}
+  #s0 .pane,#s4 .pane,#s6 .pane{align-self:center}
+  /* THE KEEPSAKE in two columns: the left column holds the payoff (the heading, the plan, the personal note and Start over); the right column holds everything she can DO (WhatsApp, save, Instagram). On a phone the order is simply the order in the HTML: payoff first, actions next, note and Start over last. */
+  #s5.on{grid-template-rows:auto auto 1fr}
+  #s5 .lede{grid-column:1;grid-row:1}
+  #s5 .pane{grid-column:2;grid-row:1 / span 3}
+  #s5 .promise{grid-column:1;grid-row:2;margin-top:8px}
+  #s5>.row{grid-column:1;grid-row:3;align-self:end;justify-content:flex-start}
+}
+/* ===== 3. CONTROLS =====
+   Inputs, chips and buttons. .sel marks the answer she chose. Focus rings stay visible because keyboard users have hearts too. */
+.names{display:grid;gap:10px;margin:0 0 4px}
+.fields{display:grid;gap:10px;margin-bottom:4px}
+input,textarea{width:100%;padding:12px 14px;border-radius:var(--r2);border:1px solid var(--edge);background:var(--wine2);color:inherit;font:inherit;color-scheme:dark}
+input::placeholder,textarea::placeholder{color:inherit;opacity:.55}
+input+.chips{margin-top:14px}
+/* INTENTION DROPDOWN (first page): a real <select>, so phones show their own easy picker and screen readers know exactly what it is.
+   It wears the same clothes as the name box (same border, same corners, same fill), so the two feel like one family.
+   Plain words: .pick is the frame around the question and the box. .field wraps only the box, so the little arrow can sit on top of it. The arrow is two borders on a tiny turned square: no image, no icon file, no SVG.
+   STATES: dimmed text while nothing is chosen, a gold border once she chooses, a rose border if she tried to continue without choosing.
+   Could go wrong: on very narrow phones the longest choice is cut with ... inside the closed box (the open list always shows every word). Keep font-size at 16px or more, because iPhones zoom the whole page when a smaller field is tapped. */
+.pick{margin-top:6px}
+.pick label{display:block;margin-bottom:8px;font-family:var(--serif);font-style:italic;font-size:1.02rem;line-height:1.4;opacity:.9}
+.pick .field{position:relative}
+.pick .field::after{content:"";position:absolute;right:18px;top:50%;width:8px;height:8px;margin-top:-7px;box-sizing:border-box;border-right:2px solid var(--gold);border-bottom:2px solid var(--gold);transform:rotate(45deg);pointer-events:none}
+.pick select{display:block;width:100%;padding:12px 42px 12px 14px;border-radius:var(--r2);border:1px solid var(--edge);background:var(--wine2);color:inherit;font:inherit;text-align:start;cursor:pointer;-webkit-appearance:none;appearance:none;color-scheme:dark;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:border-color .2s,background-color .2s}
+.pick select:required:invalid{color:rgba(253,232,226,.7)}
+.pick select:required:valid{border-color:var(--gold)}
+.pick select:focus{border-color:var(--gold);background:#431522}
+.pick select[aria-invalid="true"]{border-color:#ff9bb0}
+/* The open list gets a solid wine background, because on Windows and Linux the list ignores see-through fills and would show pale text on white. */
+.pick select option{background:var(--wine);color:var(--cream)}
+.pick select option:disabled{color:rgba(253,232,226,.6)}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+#s5 :focus-visible{outline-color:var(--rose-deep)}
+h1:focus,h2:focus{outline:none} /* headings get focus only so screen readers announce each step */
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.chip{padding:10px 14px;border-radius:var(--r2);border:1px solid var(--edge);background:transparent;color:inherit;font:inherit;cursor:pointer;transition:background-color .2s,border-color .2s,color .2s}
+/* SELECTED CHIP: she should know at a glance that her tap registered. Three cues work together, so it never depends on colour alone: (1) a solid rose-gold fill with dark text (the light-and-dark swap is easy to see even without colour), (2) a soft ring around it, (3) a tiny pop when it lands. The script also sets aria-pressed for screen readers.
+   Plain words: the ring is drawn with box-shadow, which never changes the chip's size, so the other chips do not move when she taps one. The text weight stays the same for the same reason: bold text is wider and would nudge its neighbours.
+   Could go wrong: in forced-colours mode the browser removes all colours, so a system-colour version sits at the very end of this file. */
+.chip.sel{background:var(--gold);color:var(--night);border-color:var(--gold);box-shadow:0 0 0 3px rgba(243,167,143,.3);animation:chipPop .3s ease-out}
+@keyframes chipPop{0%{transform:scale(.95)}60%{transform:scale(1.04)}100%{transform:none}}
+/* A press that answers instantly: the chip shrinks a little the moment a finger lands, before the script even runs. */
+.chip:active,.chip.sel:active{transform:scale(.96)}
+/* BUTTONS: one solid fill, no gradient. The main button is rose-gold with dark text on the wine cards, and deep rose with cream text on the paper card, so it is easy to see on both. The ghost button is an outline. Hover only changes the colour. */
+.btn{padding:13px 22px;border-radius:var(--r2);border:0;font:inherit;font-weight:600;cursor:pointer;background:var(--gold);color:var(--night);transition:background-color .2s,transform .15s}
+.btn:active{transform:scale(.97)}
+.btn.ghost{background:transparent;color:inherit;border:1px solid var(--edge);font-weight:400}
+@media (hover:hover){.btn:hover{background:#f8baa5}.btn.ghost:hover{background:rgba(243,167,143,.12)}}
+#s5 .btn{background:var(--rose-deep);color:#fdf1ea}
+#s5 .btn.ghost{background:transparent;color:var(--ink);border-color:rgba(58,12,28,.45)}
+@media (hover:hover){#s5 .btn:hover{background:#8a0c31}#s5 .btn.ghost:hover{background:rgba(58,12,28,.08)}}
+#s0 .pane>.btn{width:100%}
+.row{display:flex;gap:10px;justify-content:space-between;align-items:center;margin-top:16px;flex-wrap:wrap}
+.row.center{justify-content:center}
+/* PROGRESS: five dashes, a 'Step 2 of 5' line and the whisper. They are the first things in the stage, so they never move. */
+.dots{display:flex;gap:6px;justify-content:center;margin-bottom:6px}
+.dots i{width:28px;height:4px;border-radius:2px;background:rgba(255,255,255,.2);transition:background-color .4s}.dots i.on{background:var(--gold)}
+/* STEP LABEL: 'Step 2 of 5' sits right under the dashes. Small, quiet and centred, so it informs without shouting. Tabular numbers keep every digit the same width, so the line never wiggles when the step changes. min-height saves the space even when the line is empty (the goodbye screen), so nothing below it jumps.
+   Could go wrong: the words are written by show(). If you add or remove a step, change the 5 there and the number of dashes in the HTML together. */
+.stepnote{text-align:center;font-size:.78rem;letter-spacing:.03em;opacity:.78;min-height:1.2em;margin:0 0 6px;font-variant-numeric:tabular-nums}
+/* WHISPER: the italic line that changes with every choice. Two lines of room are always saved (three on very narrow phones), so the card below it never moves when the words change. */
+.whisper{min-height:2.9em;text-align:center;font-family:var(--serif);font-style:italic;font-size:.95rem;color:var(--gold);margin:0 8px 12px;line-height:1.45;transition:opacity .25s}
+@media (max-width:360px){.whisper{min-height:4.4em}}
+/* ERROR LINES: gentle, in italics, with a line of room always saved so the page does not jump when one appears. */
+.err{color:#ff9bb0;min-height:1.4em;margin:6px 0 4px;font-family:var(--serif);font-style:italic;font-size:.92rem;line-height:1.45}
+/* ===== 4. THE BIG QUESTION =====
+   One beating heart, two honest buttons. The No button is never hidden, moved or shrunk, because consent that has to chase a button is not consent. This is the one place the page spends its boldness: the shining headline, the beating heart and the pulsing ring on Yes. */
+.ask{display:flex;flex-direction:column;gap:12px;align-items:center;margin:8px auto 4px;max-width:320px}
+#yes{width:100%;font-size:1.1rem;background:var(--rose-deep);color:#fff4ee;animation:pulseRing 2.8s ease-out infinite}
+@media (hover:hover){#yes:hover{background:#bd1646}}
+#no{width:100%;background:transparent;border:1px solid var(--edge);color:var(--cream);font-weight:400}
+.bigheart{background:none;border:0;cursor:pointer;display:block;margin:0 auto 2px;animation:beat 1.8s infinite;transition:filter .4s}
+.bigheart.warm{filter:drop-shadow(0 0 18px rgba(243,167,143,.8))}
+.bigheart:active{transform:scale(.92)}
+.warmth{font-size:.8rem;opacity:.78;margin-bottom:12px}
+.tease{min-height:4.8em;font-family:var(--serif);font-style:italic;line-height:1.5;margin:6px 4px 16px;transition:opacity .25s}
+/* ===== 5. KEEPSAKE =====
+   The plan card she screenshots. It lists the plan once, as a label-and-value list (a real <dl>), so the values stand out and a screen reader reads each pair together. The thank-you line is its signature. */
+.ticket{margin:14px 0 16px;padding:14px 16px;border-radius:var(--r2);background:rgba(58,12,28,.07)}
+.plan{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:14px;row-gap:6px;line-height:1.5}
+.plan dt{opacity:.75}
+/* A long word with no spaces (a pasted link, say) breaks inside the card instead of pushing the whole page sideways on a small phone. */
+.plan dd{font-weight:600;overflow-wrap:anywhere;word-break:break-word}
+.thanks{margin-top:12px;padding-top:12px;border-top:1px solid rgba(58,12,28,.2);font-family:var(--serif);font-style:italic;line-height:1.55}
+/* The three save buttons share one row (two lines of text is fine when a label is long). */
+.acts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}
+.acts .btn{font-size:.82rem;padding:12px 4px;line-height:1.25;min-height:48px}
+.textbtn{display:block;margin:2px auto 0;background:none;border:0;color:inherit;font:inherit;font-size:.9rem;text-decoration:underline;cursor:pointer;padding:12px;min-height:44px;opacity:.85}
+.note{margin:4px 0 0;font-style:italic;text-align:center}
+.note:empty{display:none}
+/* ===== 5b. WHATSAPP PREVIEW (a small drawer under the WhatsApp box) =====
+   The WhatsApp box above it is the shared .cta design (section 5c). This section styles the drawer: the exact message as a chat bubble, the 'someone is typing' moment, and the little hearts.
+   WHY A DRAWER: the plan is already shown once, in the plan card. Showing it again inside the box would repeat it. So the exact words wait in a closed drawer ('See the message first'), and nothing is hidden or sent in secret: she can open it any time.
+   HOW THE DATING-STYLE MOMENT WORKS, in plain words:
+   1. At rest (no script, or her device asks for calm) the message is simply visible when the drawer is open. Nothing can go missing.
+   2. The moment she taps the drawer open, the script adds .arm to the bubble. It shrinks to a small bubble with three bouncing dots, like someone typing, and the words wait out of sight. The script also saves the room the finished message will need (min-height on .chat), so nothing below it moves.
+   3. A moment later the script adds .sent. The bubble pops open into the full message, the words rise in, and a few green hearts drift up from it. It plays once; opening the drawer again just shows the message.
+   Could go wrong: the saved room is measured once, when the drawer opens. If the phone is turned sideways during the 1.4 second typing moment the message may differ in height by a few pixels; that is harmless and fixes itself when .sent clears the saved height. */
+.cta-wrap{position:relative;margin:0 0 6px}
+.cta-wrap>.cta{margin:0}
+.cta-wrap>.fh{z-index:2}
+.preview summary{display:flex;align-items:center;gap:8px;min-height:44px;padding:8px 4px;cursor:pointer;list-style:none;font-size:.92rem;opacity:.9}
+.preview summary::-webkit-details-marker{display:none}
+.preview summary::after{content:"";width:8px;height:8px;margin:-3px 4px 0 auto;box-sizing:border-box;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);transition:transform .2s}
+.preview[open] summary::after{transform:rotate(-135deg);margin-top:3px}
+/* The chat area is a column pushed to the bottom, so the small 'typing' bubble sits at the bottom of the panel and the finished message grows upward from it, like a real chat. padding-right leaves room for the little tail. The panel is WhatsApp's dark green and the bubble is WhatsApp's own light green, with near-black text. */
+.chat{display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-end;padding:14px 18px 14px 12px;border-radius:var(--r2);background:#0b3d2b}
+.bub{position:relative;max-width:100%;padding:12px 14px;border-radius:16px 16px 4px 16px;background:#d9fdd3;color:#0b1f16;font-size:.9rem;line-height:1.5;text-align:left}
+.bub::after{content:"";position:absolute;right:-8px;bottom:0;width:10px;height:14px;background:#d9fdd3;clip-path:polygon(0 0,100% 100%,0 100%)}
+.bub .msg div{overflow-wrap:anywhere;word-break:break-word}
+.bub .msg .gap{margin-top:.7em}
+.bub .typing{display:none;gap:5px;padding:5px 2px}
+.typing i{width:7px;height:7px;border-radius:50%;background:#1f6b45;animation:typeDot 1s infinite ease-in-out}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes typeDot{0%,60%,100%{transform:translateY(0);opacity:.35}30%{transform:translateY(-5px);opacity:1}}
+/* Typing: only the dots take up space. The words are lifted out of the flow (position:absolute) and hidden, but they stay in the page, so a screen reader can still read them. */
+.bub.arm:not(.sent) .typing{display:flex}
+.bub.arm:not(.sent) .msg{position:absolute;left:14px;right:14px;top:12px;opacity:0;pointer-events:none}
+/* Sent: the bubble pops open from its bottom-right corner (where the tail is) and the words fade up inside it. */
+.bub.arm.sent{transform-origin:100% 100%;animation:waPop .45s cubic-bezier(.2,.9,.3,1.25) both}
+.bub.arm.sent .msg{animation:waIn .6s cubic-bezier(.2,.9,.3,1.2) .05s both}
+@keyframes waPop{from{transform:scale(.88)}to{transform:none}}
+@keyframes waIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+/* FLOATING HEARTS: made by the script, moved by CSS, deleted when they finish. They are WhatsApp green, to match the box. --dx is how far each one drifts sideways. */
+.fh{position:absolute;pointer-events:none;color:#3ee57c;line-height:1;opacity:0;animation:floatUp 1.7s ease-out both}
+@keyframes floatUp{0%{opacity:0;transform:translate(0,0) scale(.6)}15%{opacity:.95}100%{opacity:0;transform:translate(var(--dx,0px),-90px) scale(1.15)}}
+/* CALM MODE: no typing dots, the words are simply there, and no hearts. */
+@media (prefers-reduced-motion:reduce){.bub.arm:not(.sent) .typing{display:none}.bub.arm:not(.sent) .msg{position:static;opacity:1;pointer-events:auto}.fh{display:none}}
+/* ===== 6. FOOTER, LEGAL LINKS, DIALOGS, TOAST =====
+   The signature, the Privacy and Terms links, the transparent-code panel and the little confirmation bubble. Could go wrong: a fixed overlay on a tiny phone can hide content, so the footer and the legal links flow with the page. */
+/* LEGAL LINKS: always on screen, on every step, because she should be able to read how her answers are treated BEFORE she types them. They are real buttons (not links), so nothing leaves the page. */
+.legal{position:relative;z-index:1;display:flex;flex-wrap:wrap;justify-content:center;gap:0 6px;margin:0 auto 14px;font-size:.78rem}
+.link{background:none;border:0;color:var(--gold);cursor:pointer;font:inherit;text-decoration:underline;padding:8px 10px;min-height:32px}
+/* FOOTER: flows at the end of the page (an earlier fixed version sat on top of the buttons). A quiet panel with a hairline border: nothing glows, nothing breathes, nothing lifts. */
+footer{position:relative;z-index:5;margin:6px auto 24px;width:min(94%,520px);text-align:center;padding:10px 12px;font-size:.74rem;line-height:1.6;border-radius:var(--r2);background:rgba(255,255,255,.05);border:1px solid var(--line)}
+/* CREDITS (audit button + signature footer): hidden while she is still answering, shown only on the two finish screens. The script puts .done on <body> inside show(). display:none (not just see-through) so nobody can Tab to a button they cannot see. When it appears it fades up gently; in calm mode the global rule switches the animation off and the block simply appears. */
+.credits{display:none}
+body.done .credits{display:block;animation:creditsIn .9s ease both}
+@keyframes creditsIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+/* SOURCE VIEWER: a full-screen room showing the code. Transparency is attractive. */
+#src{position:fixed;inset:0;z-index:20;background:rgba(12,2,8,.96);display:none;padding:14px;flex-direction:column;gap:10px}
+#src.on{display:flex}
+#src textarea{flex:1;font:12px/1.4 ui-monospace,Consolas,monospace;white-space:pre;color:#cfe}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.stats div{background:var(--glass);border-radius:var(--r2);padding:8px;text-align:center;font-size:.72rem;cursor:help}
+.stats b{display:block;font-size:1.15rem;color:var(--gold)}
+/* PRIVACY AND TERMS DIALOG: one small dialog, two short documents, a pair of tabs to switch between them. The words are ordinary text already in the page, so nothing is loaded and nothing is sent. The text area can take focus (tabindex 0 in the HTML), so a keyboard user can scroll it with the arrow keys. */
+#legal{position:fixed;inset:0;z-index:35;background:rgba(12,2,8,.94);display:none;align-items:center;justify-content:center;padding:14px}
+#legal.on{display:flex}
+.legalbox{display:flex;flex-direction:column;width:min(100%,640px);max-height:100%;padding:18px;border-radius:var(--r3);background:var(--wine);border:1px solid var(--line)}
+.legalhead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.legalhead h3{font-family:var(--serif);font-weight:400;font-size:1.4rem}
+.legaltabs{display:flex;gap:8px;margin:12px 0}
+.legaltabs button{flex:1;padding:10px 8px;border-radius:var(--r2);border:1px solid var(--edge);background:transparent;color:inherit;font:inherit;cursor:pointer}
+.legaltabs button[aria-pressed="true"]{background:var(--gold);color:var(--night);border-color:var(--gold);font-weight:600}
+.legalbody{overflow:auto;padding-right:6px;line-height:1.55;font-size:.92rem}
+.legalbody h4{font-family:var(--serif);font-weight:400;font-size:1.05rem;color:var(--gold);margin:16px 0 4px}
+.legalbody h4:first-of-type{margin-top:8px}
+.legalbody .stamp{font-size:.8rem;opacity:.75}
+#toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:var(--gold);color:var(--night);padding:10px 18px;border-radius:var(--r2);z-index:50;opacity:0;transition:opacity .3s;pointer-events:none}
+#toast.on{opacity:1}
+/* THE PERSONAL NOTE ('From me, honestly'): plain serif italics on the paper, set off by space and a small heading. No stripe and no box, because the words are enough. */
+.promise{margin:20px 0 0;text-align:left}
+.promise h3{font-family:var(--serif);font-weight:400;font-size:1.15rem;margin-bottom:6px}
+.promise p{font-family:var(--serif);font-style:italic;line-height:1.65;font-size:.98rem}
+.promise p+p{margin-top:8px}
+/* ===== 5c. CALL-TO-ACTION BOXES: the WhatsApp message box and the Instagram follow box =====
+   Two boxes, ONE design. How a box is built lives in the shared .cta rules: the grid, the padding, the corners, the 1px border, the dip on press, the tap ripple, and the way the first row (logo on the left, pill on the right) sits above a full-width heading. Each box only adds its own colours, in two small blocks: .cta-ig (Instagram: wine and rose-gold) and .cta-wa (WhatsApp: dark green). Change a shared rule and BOTH boxes change together, so they can never drift apart.
+   The WHOLE box is one link, so a tap anywhere in it opens the other app (in a new tab, so her keepsake stays open).
+   THE LOGOS are drawn with CSS only: no image, no icon file, no SVG. Instagram: a gradient tile, a camera outline, a lens ring and a flash dot. WhatsApp: a green tile, a speech bubble (a circle with one square corner) and a phone handset (a curved bar with a blob at each end). Every size is a fraction of --s, so a logo keeps its proportions at any size.
+   WHAT MOVES, AND WHEN, in plain words:
+   - Every 4.6 seconds a logo acts: it hops and tilts and a soft shine slides across it. Instagram's flash dot also lights up like a camera; WhatsApp sends out one green ping ring, like a new-message alert. The rest of the time everything sits still.
+   - Nothing glows and nothing lifts on hover. Only two things answer her finger: the box dips when pressed, and a soft ripple spreads from the touch point (the script draws it).
+   Could go wrong: motion can bother some people, so a phone set to 'remove animations' or 'reduce motion' gets still logos and no ripple. Instagram's gradient and WhatsApp's green are the bright colours here on purpose: they are what make the logos recognisable. */
+/* THE TWO PALETTES. Each box sets the same named colours; the shared rules below simply use them. */
+.cta-ig{--bg:#4a1024;--box-edge:var(--gold);--box-edge-hi:#ffd0bd;--box-ink:var(--cream);--box-ink2:var(--gold);--ripple:rgba(255,255,255,.3)}
+.cta-wa{--bg:#0b3d2b;--box-edge:rgba(37,211,102,.75);--box-edge-hi:#86f5ae;--box-ink:#eafff1;--box-ink2:#9ff3bd;--ripple:rgba(130,255,180,.28)}
+/* THE SHARED BOX. */
+.cta{--s:48px;position:relative;display:grid;grid-template-columns:1fr auto;column-gap:14px;row-gap:10px;align-items:center;text-align:left;text-decoration:none;color:var(--box-ink);margin:0 0 12px;padding:14px;border-radius:var(--r3);background:var(--bg);border:1px solid var(--box-edge);-webkit-tap-highlight-color:transparent;touch-action:manipulation;transition:border-color .25s,transform .15s}
+.cta>*{position:relative;z-index:1}
+.cta>.cta-ripples{position:absolute;inset:0;z-index:0;border-radius:inherit;overflow:hidden;pointer-events:none}
+.cta-logo{grid-column:1;grid-row:1;justify-self:start;display:block;width:var(--s);height:var(--s);transition:transform .2s}
+.cta-head{grid-column:1/-1;display:block;font-size:clamp(.92rem,4.3vw,1.05rem);line-height:1.3;color:var(--box-ink);overflow-wrap:anywhere}
+.cta-desc{grid-column:1/-1;display:block}
+.cta em{display:block;font-family:var(--serif);line-height:1.5;font-size:.93rem}
+.cta small{display:block;margin-top:6px;opacity:.9;font-size:.84rem}
+.cta .igline{grid-column:1/-1;font-family:var(--serif);font-style:italic;color:var(--box-ink2);opacity:1;min-height:2.9em;margin-top:0;transition:opacity .35s}
+.ighandle{color:#fff}
+/* The pill: a plain solid button shape on the right of the first row. It is decoration for the finger (the whole box is the link), so it has no glow and no breathing. */
+.cta-pill{grid-column:2;grid-row:1;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.15;min-width:92px;min-height:44px;padding:10px 18px;border-radius:var(--r2);font-weight:700;font-size:.98rem;transition:background-color .25s}
+.cta-ig .cta-pill{background:var(--cream);color:var(--rose-deep)}
+.cta-wa .cta-pill{background:#25d366;color:#04150c}
+/* THE LOGO TILES. Both share size, rounded corners and the shine; each adds its own colours. overflow:hidden keeps the shine inside the corners. */
+.iglogo,.walogo{position:relative;display:block;width:var(--s);height:var(--s);border-radius:calc(var(--s)*.28);overflow:hidden;forced-color-adjust:none}
+.iglogo{background:radial-gradient(circle at 30% 107%,#fdf497 0%,#fdf497 5%,#fd5949 45%,#d6249f 60%,#285aeb 90%);animation:ctaNudge 4.6s ease-in-out infinite}
+.walogo{background:linear-gradient(165deg,#63e57d 0%,#25d366 50%,#1da851 100%);animation:ctaNudge 4.6s ease-in-out infinite,waPing 4.6s ease-in-out infinite}
+.iglogo::after,.walogo::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.38) 50%,transparent 65%);transform:translateX(-120%);animation:ctaSheen 4.6s ease-in-out infinite}
+/* Instagram's white parts. */
+.iglogo::before{content:"";position:absolute;box-sizing:border-box;inset:calc(var(--s)*.2);border:calc(var(--s)*.058) solid #fff;border-radius:calc(var(--s)*.17)}
+.iglens{position:absolute;box-sizing:border-box;inset:0;margin:auto;width:calc(var(--s)*.28);height:calc(var(--s)*.28);border:calc(var(--s)*.058) solid #fff;border-radius:50%}
+.igflash{position:absolute;box-sizing:border-box;left:calc(var(--s)*.6);top:calc(var(--s)*.31);width:calc(var(--s)*.085);height:calc(var(--s)*.085);border-radius:50%;background:#fff;animation:igFlash 4.6s ease-in-out infinite}
+/* WhatsApp's white parts: the bubble is a circle whose bottom-left corner is left square; the handset is a quarter-ring with a small rounded block at each end. */
+.walogo::before{content:"";position:absolute;box-sizing:border-box;left:calc(var(--s)*.2);top:calc(var(--s)*.18);width:calc(var(--s)*.6);height:calc(var(--s)*.6);border:calc(var(--s)*.06) solid #fff;border-radius:50% 50% 50% 0}
+.waphone{position:absolute;box-sizing:border-box;left:calc(var(--s)*.37);top:calc(var(--s)*.34);width:calc(var(--s)*.26);height:calc(var(--s)*.26);border-left:calc(var(--s)*.07) solid #fff;border-bottom:calc(var(--s)*.07) solid #fff;border-radius:0 0 0 100%}
+.waphone::before,.waphone::after{content:"";position:absolute;background:#fff;border-radius:calc(var(--s)*.03)}
+.waphone::before{left:calc(var(--s)*-.07);top:calc(var(--s)*-.02);width:calc(var(--s)*.12);height:calc(var(--s)*.08)}
+.waphone::after{right:calc(var(--s)*-.02);bottom:calc(var(--s)*-.07);width:calc(var(--s)*.08);height:calc(var(--s)*.12)}
+@keyframes ctaNudge{0%,66%{transform:none}72%{transform:translateY(-7px) rotate(-5deg)}78%{transform:translateY(0) rotate(2deg)}84%{transform:translateY(-3px) rotate(-1deg)}90%,100%{transform:none}}
+@keyframes ctaSheen{0%,70%{transform:translateX(-120%)}90%,100%{transform:translateX(120%)}}
+@keyframes igFlash{0%,68%{transform:scale(1);box-shadow:0 0 0 0 rgba(255,255,255,0)}74%{transform:scale(2);box-shadow:0 0 8px 3px rgba(255,255,255,.9)}84%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(255,255,255,0)}}
+/* The tap ripple: a soft circle that grows from the touch point and fades. The script sizes and places it. */
+.cta-ripple{position:absolute;border-radius:50%;background:radial-gradient(circle,var(--ripple),rgba(255,255,255,0) 65%);transform:scale(0);animation:ctaRipple .7s ease-out forwards;pointer-events:none}
+@keyframes ctaRipple{to{transform:scale(1);opacity:0}}
+/* Screen-reader-only text: invisible, but still read aloud. */
+.vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+/* ===== 5d. SCROLL REVEAL =====
+   Blocks marked data-rv in the HTML glide up a little (and most also fade in) the first time they scroll into view. 'slide' blocks only move, never fade, so they can never be invisible.
+   SAFETY, in plain words: nothing is hidden until the script has switched on the class 'rv' on the page, and it only does that after the browser's scroll-watcher has reported back once, which proves the watcher works. If the watcher is missing or broken, or her device asks for calm, nothing is ever hidden, so there can never be a blank hole where a block should be.
+   The script adds .in when a block comes into view, and .rv-quiet when the block was already on screen as its step opened (those just appear with the step and do not animate twice). --d is a tiny delay so blocks that arrive together glide in one after another. translate (not transform) is used so it never fights the hover and press effects. */
+.rv [data-rv]:not(.in){opacity:0}
+.rv [data-rv="slide"]:not(.in){opacity:1;translate:0 22px}
+.rv [data-rv].in{animation:rvIn .75s cubic-bezier(.2,.7,.2,1) var(--d,0s) both}
+.rv [data-rv="slide"].in{animation-name:rvSlide}
+.rv [data-rv].in.rv-quiet{animation:none}
+@keyframes rvIn{from{opacity:0;translate:0 20px}to{opacity:1;translate:0 0}}
+@keyframes rvSlide{from{translate:0 22px}to{translate:0 0}}
+/* AUDIT BUTTON AND REPORT PANEL: the part of the page that asks 'are we okay?' and answers honestly instead of saying 'we're fine'.
+   Severity is written as a coloured tag with the WORD in it (red critical, orange high, amber medium, green low, blue informational), so colour never works alone. There is no coloured stripe down the side of a finding. */
+/* KEY GATE: a small centred dialog that guards the source viewer and the audit report. */
+#gate{position:fixed;inset:0;z-index:40;background:rgba(12,2,8,.9);display:none;align-items:center;justify-content:center;padding:18px}
+#gate.on{display:flex}
+.gatebox{width:min(100%,380px);padding:22px;border-radius:var(--r3);background:var(--wine);border:1px solid var(--edge)}
+.gatebox h3{font-family:var(--serif);font-weight:400;font-size:1.4rem;margin-bottom:6px}
+.auditbtn{display:block;margin:12px auto 0;padding:12px 20px;border-radius:var(--r2);background:rgba(255,255,255,.08);color:var(--cream);border:1px solid var(--edge);font:inherit;font-weight:600;cursor:pointer;position:relative;z-index:5;transition:background-color .2s,color .2s}
+.auditbtn:hover{background:var(--gold);color:var(--night)}
+#audit{position:fixed;inset:0;z-index:25;background:rgba(12,2,8,.97);display:none;flex-direction:column;padding:14px;gap:10px}
+#audit.on{display:flex}
+#auditBody{flex:1;overflow:auto;padding-right:4px}
+#auditBody h3{font-family:var(--serif);font-weight:400;color:var(--gold);margin:18px 0 4px}
+.fi{margin:8px 0;padding:10px 12px;background:rgba(255,255,255,.06);border-radius:var(--r2);font-size:.88rem;line-height:1.45}
+.fi p{margin-top:4px;opacity:.85}
+.badge{display:inline-block;font-size:.7rem;padding:2px 8px;border-radius:var(--r1);background:rgba(255,255,255,.16);margin-right:6px}
+.badge.st-passed{background:#1f6b45}.badge.st-detected{background:#8a2a2a}.badge.st-fixed{background:#2a5a9a}.badge.st-notperformed{background:#6a5a1a}
+.badge.sv-critical{background:#b3123f;color:#fff}.badge.sv-high{background:#a8440f;color:#fff}.badge.sv-medium{background:#7a5b00;color:#fff}.badge.sv-low{background:#1f6b45;color:#fff}.badge.sv-informational{background:#2a5a9a;color:#fff}
+/* LOGO KEYFRAMES. Instagram's flash dot lights like a camera. WhatsApp's logo sends out ONE green ping ring at the moment of the hop (the ring is a box-shadow that grows and fades, like a new-message alert). Neither one glows the rest of the time. */
+@keyframes waPing{0%,66%{box-shadow:0 0 0 0 rgba(37,211,102,0)}72%{box-shadow:0 0 0 0 rgba(37,211,102,.6)}92%,100%{box-shadow:0 0 0 14px rgba(37,211,102,0)}}
+/* Mouse only (so a phone does not leave a box 'stuck' after a tap): the border brightens and the pill changes colour. The press rules come LAST so a press always wins over a hover. */
+@media (hover:hover){
+  .cta:hover{border-color:var(--box-edge-hi)}
+  .cta-ig:hover .cta-pill{background:#ffd9cc}
+  .cta-wa:hover .cta-pill{background:#52ec8d}
+}
+.cta:active{transform:scale(.985)}
+.cta:active .cta-logo{transform:scale(.92)}
+/* Bigger on roomy screens. The heading sits BELOW the logo row, so it always gets the full width of the box. */
+@media (min-width:480px){.cta{--s:54px;padding:16px 18px;column-gap:16px}}
+/* REDUCED MOTION: if her device asks for calm, every animation and transition is switched off. Romance should not make anyone dizzy.
+   Plain words: the star (*) means 'every element', but it does NOT include the invisible extra pieces a page draws with ::before and ::after (the shine on the logos is drawn that way). So those two are named too. Without them a phone set to 'remove animations' would still show the shine sweeping across. */
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+/* ===== 7. THE HONEST LINES (first page) =====
+   Five short sentences that arrive one at a time, like someone saying them out loud and letting each one land.
+   HOW IT WORKS, in plain words:
+   1. At rest (no script, or her device asks for calm) every sentence is simply visible and every underline is fully drawn. Nothing can go missing.
+   2. The script "arms" the block by adding .vals-live. Now each sentence starts hidden (see-through, a little low, a little blurry) and each underline starts at length zero.
+   3. When the block is on screen the script adds .go. Each sentence then fades in on its own timer (--d). The three key phrases follow, each with its own gesture:
+      honesty is written left to right, face to face closes in from both ends, real emotions opens outward from the middle.
+   4. When the last underline finishes, the script removes both classes. That leaves the block in its resting look, identical to the last frame, so nothing jumps and nothing replays if she taps Back.
+   TYPE: the sentences are italic serif, the same voice as the whisper line and the promise note. The key phrases stand up straight in roman, which is how typographers mark emphasis inside italic text.
+   Could go wrong: the delays below are one timeline. If you reorder the sentences in the HTML, reorder the :nth-child rules too. The script ends the show when the underline on .hl-c finishes, so keep the valsDraw name on it. */
+.vals{--vals-ink:rgba(253,232,226,.9);--vals-gold:var(--gold);--vals-rose:#ff9db5;margin:16px 0 14px;max-width:27em;display:grid;gap:.35rem}
+.vline{font-family:var(--serif);font-style:italic;font-size:clamp(1rem,4.2vw,1.2rem);line-height:1.45;color:var(--vals-ink);text-wrap:balance}
+.vlead{font-style:normal;font-size:clamp(1.2rem,5.2vw,1.5rem);line-height:1.25;letter-spacing:.01em;color:var(--cream);white-space:nowrap;margin-bottom:.3rem}
+/* THE THREE KEY PHRASES: honesty, face to face, real emotions. The underline is not a border. It is a thin strip painted as a background image along the bottom edge, which lets it grow smoothly. The anchor point decides where it grows from: the left edge (honesty), both edges (face to face: two strips a little over half the width, so they overlap in the middle) or the centre (real emotions). padding-bottom lowers the strip so it clears the tail of the letter y.
+   Could go wrong: nowrap keeps each phrase on one line so its underline never splits in two. That is fine while the phrases stay short. */
+.hl{font-style:normal;font-weight:400;white-space:nowrap;padding-bottom:.1em;color:var(--vals-gold);background-repeat:no-repeat}
+.hl-a{background-image:linear-gradient(var(--vals-gold),var(--vals-gold));background-position:0 100%;background-size:100% 2px}
+.hl-b{background-image:linear-gradient(var(--vals-gold),var(--vals-gold)),linear-gradient(var(--vals-gold),var(--vals-gold));background-position:0 100%,100% 100%;background-size:51% 2px,51% 2px}
+.hl-c{color:var(--vals-rose);background-image:linear-gradient(var(--vals-rose),var(--vals-rose));background-position:50% 100%;background-size:100% 2px}
+/* GET READY (the script adds .vals-live): sentences start see-through, a little low and a little blurry; phrases start in the plain text colour with no underline. */
+.vals-live .vline{opacity:0;transform:translateY(12px);filter:blur(6px)}
+.vals-live .hl{color:inherit}
+.vals-live .hl-a,.vals-live .hl-c{background-size:0% 2px}
+.vals-live .hl-b{background-size:0% 2px,0% 2px}
+/* THE TIMELINE (the script adds .go): when each sentence starts (--d), then when each key phrase gets its colour and underline, a moment after its sentence has settled. Total: about 8.6 seconds, and the form below works the whole time.
+   Could go wrong: will-change is only set while the show runs, because keeping it forever wastes memory. */
+.vline:nth-child(1){--d:.6s}
+.vline:nth-child(2){--d:1.9s}
+.vline:nth-child(3){--d:3.2s}
+.vline:nth-child(4){--d:4.7s}
+.vline:nth-child(5){--d:6.7s}
+.vals-live.go .vline{animation:valsIn 1.2s cubic-bezier(.22,.8,.3,1) var(--d,0s) both;will-change:opacity,transform,filter}
+.vals-live.go .hl-a{animation:valsGold .9s ease-out 3.9s both,valsDraw .9s cubic-bezier(.65,0,.35,1) 3.9s both}
+.vals-live.go .hl-b{animation:valsGold .9s ease-out 5.6s both,valsDrawB .9s cubic-bezier(.65,0,.35,1) 5.6s both}
+.vals-live.go .hl-c{animation:valsRose 1s ease-out 7.3s both,valsDraw 1.3s cubic-bezier(.65,0,.35,1) 7.3s both}
+@keyframes valsIn{from{opacity:0;transform:translateY(12px);filter:blur(6px)}to{opacity:1;transform:none;filter:blur(0)}}
+@keyframes valsGold{to{color:var(--vals-gold)}}
+@keyframes valsRose{to{color:var(--vals-rose)}}
+@keyframes valsDraw{to{background-size:100% 2px}}
+@keyframes valsDrawB{to{background-size:51% 2px,51% 2px}}
+/* CALM MODE: the rule above already stops animations on elements, but it cannot show what the script had hidden. If her device asks for calm after the script armed the block, this puts every word and underline at rest at once. */
+@media (prefers-reduced-motion:reduce){
+.vals-live .vline{opacity:1;transform:none;filter:none}
+.vals-live .hl-a,.vals-live .hl-b{color:var(--vals-gold)}
+.vals-live .hl-c{color:var(--vals-rose)}
+.vals-live .hl-a,.vals-live .hl-c{background-size:100% 2px}
+.vals-live .hl-b{background-size:51% 2px,51% 2px}
+}
+/* HIGH-CONTRAST MODE (Windows and others): the system repaints backgrounds, so the painted underline would vanish. A real text underline takes its place. */
+@media (forced-colors:active){.hl{background:none;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:.2em}}
+/* FORCED COLOURS: the system paints everything in its own palette and ignores glows, so the selected chip is shown with the system's own 'selected' colours and an outline, and the chat bubble gets a real border. */
+@media (forced-colors:active){.chip.sel{background:Highlight;color:HighlightText;border-color:HighlightText;forced-color-adjust:none;outline:3px solid Highlight;outline-offset:2px}.bub{border:1px solid CanvasText}.bub::after{display:none}.cta-pill{border:2px solid ButtonText}}
+/* SHORT PHONES (700px tall or less, like an iPhone SE): trim the space between things a little, so the first page keeps its Begin button comfortably on screen without scrolling. Taller phones keep the airier spacing. It sits after the honest-lines rules on purpose, so it can adjust them. */
+@media (max-height:700px){
+  main{padding-top:10px}
+  .card{padding-top:16px;padding-bottom:16px}
+  .whisper{margin-bottom:8px}
+  p.sub{margin:6px 0 10px}
+  .vals{margin:10px 0 10px;gap:.25rem}
+  .vline{font-size:.98rem;line-height:1.4}
+  .vlead{font-size:1.15rem}
+  .err{margin:4px 0 2px}
+}
+/* MORE FORCED-COLOURS CARE: the shining headline is painted with a background, which the system removes, so it becomes plain text; the keepsake list and its panel get real borders. */
+@media (forced-colors:active){.shine{background:none;color:CanvasText}.ticket{border:1px solid CanvasText}.plan dt{opacity:1}.card{border:1px solid CanvasText}}
+</style>
+</head>
+<body>
+<!-- BACKGROUND CANVAS: floating hearts and confetti are painted here by hand (no libraries). aria-hidden because decoration should not be read aloud. Sits behind everything and ignores taps. -->
+<canvas id="bg" aria-hidden="true"></canvas>
+<!-- TOAST: tiny bubble that says 'Copied' and vanishes. role=status lets screen readers announce it politely. -->
+<div id="toast" role="status"></div>
+<!-- MAIN STAGE: one column, one card visible at a time. The dashes, the step line and the whisper sit at the very top and never move. Every card has the same two parts: .lede (the question side) and .pane (the answer side). On a phone they stack; from 900px wide they sit side by side. -->
+<main>
+  <!-- PROGRESS: five dashes for the five steps (name and hope, mood, day, time and place, the big question). The keepsake screen is the finish line, so it is not a step: it lights every dash and says 'All set'. The dashes are decoration, so they are hidden from screen readers; the words under them are real text, so everyone can tell where they are. The first dash starts lit because the page opens on step 1. -->
+  <div class="dots" id="dots" aria-hidden="true"><i class="on"></i><i></i><i></i><i></i><i></i></div>
+  <p class="stepnote" id="stepNote">Step 1 of 5</p>
+  <!-- WHISPER: the italic line that changes with every choice she makes. aria-live=polite so screen readers can follow without interrupting. -->
+  <p class="whisper" id="whisper" aria-live="polite"></p>
+
+  <!-- STEP 0, THE INVITATION: collects her name and what she is hoping to find. Both are required, because we are charming, not anonymous. Could go wrong: spaces-only names are rejected by trimming in reqStep(), and the dropdown's first option is disabled, so the hint text can never be chosen as an answer. -->
+  <section class="card on" id="s0">
+    <div class="lede">
+      <h1 tabindex="-1">Something wonderful is waiting for you</h1>
+      <p class="sub">Three small choices, then one big question. About 30 seconds.</p>
+      <!-- HONEST LINES: five short sentences that arrive one at a time (the looks are in CSS section 7, the timing in script section K). They are ordinary text, so a screen reader simply reads them in order, and if the script never runs they are just there, fully visible. The three key phrases are strong because they carry the most weight. Could go wrong: if you reorder these lines, reorder the nth-child delays in the CSS too. -->
+      <div class="vals" id="vals">
+        <p class="vline vlead">Self-Managed.</p>
+        <p class="vline">If it matters, say it.</p>
+        <p class="vline">I respect <strong class="hl hl-a">honesty</strong>.</p>
+        <p class="vline">Some things are better <strong class="hl hl-b">face to face</strong>, not assumed.</p>
+        <p class="vline"><strong class="hl hl-c">Real emotions</strong> matter more than interests.</p>
+      </div>
+    </div>
+    <!-- data-rv="slide": this block glides up a little when it scrolls into view on a short phone screen (see script section C4). 'slide' means it only moves and never fades, so the form can never be invisible. -->
+    <div class="pane" data-rv="slide">
+      <div class="names">
+        <input id="to" maxlength="30" placeholder="Your name (required)" autocomplete="given-name" aria-label="Your name" required>
+        <!-- INTENTION DROPDOWN: she picks ONE line that says what she is hoping to find. A select is a built-in menu, so phones open their own easy picker and screen readers can read it out. The first option is only a hint: it is disabled, so it cannot be chosen, and its value is empty, so the gatekeeper in reqStep() knows nothing has been picked yet. The label is tied to the menu by id="intent", so tapping the question also focuses the menu. autocomplete="off" stops Firefox from remembering an old pick after Start over (that button reloads the page). Could go wrong: the script only asks 'is anything chosen?', so you can rename or add options freely, but keep one empty-valued disabled option first. -->
+        <div class="pick">
+          <label for="intent">What are you truly hoping to find here?</label>
+          <div class="field">
+            <select id="intent" required autocomplete="off">
+              <option value="" disabled selected>Select your intention...</option>
+              <option value="marriage">💍 Marriage &amp; a Lifelong Partner</option>
+              <option value="serious">❤️ A Serious Relationship</option>
+              <option value="getting-to-know">🌹 Getting to Know Someone First</option>
+              <option value="compatibility">☕ Checking Compatibility Before Meeting</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="err" id="err0" role="alert"></div>
+      <button class="btn" data-go="1">Begin</button>
+      <p class="sub fine">Most people scroll past. A few feel it.</p>
+    </div>
+  </section>
+
+  <!-- STEP 1, MOOD: chips are filled by JavaScript from the MOODS list. She must pick at least one. 'Surprise me' is exclusive, because you cannot be surprised and plan everything. -->
+  <section class="card" id="s1">
+    <div class="lede">
+      <h2>What are we feeling?</h2>
+      <p class="sub">Pick one or more. I'll build the evening around it.</p>
+    </div>
+    <div class="pane">
+      <div class="chips" id="moods"></div>
+      <div class="err" id="err" role="alert"></div>
+      <div class="row"><button class="btn ghost" data-go="0">Back</button><button class="btn" data-go="2">Next</button></div>
+    </div>
+  </section>
+
+  <!-- STEP 2, DATE: a native date picker plus quick-pick chips. min is today, and the script re-checks it because typing can sneak past min. -->
+  <section class="card" id="s2">
+    <div class="lede">
+      <h2>When are you free?</h2>
+      <p class="sub">Tap a quick pick or choose any day.</p>
+    </div>
+    <div class="pane">
+      <input type="date" id="date" aria-label="Date">
+      <div class="chips" id="quick"></div>
+      <div class="err" id="err2" role="alert"></div>
+      <div class="row"><button class="btn ghost" data-go="1">Back</button><button class="btn" data-go="3">Next</button></div>
+    </div>
+  </section>
+
+  <!-- STEP 3, TIME, PLACE, NOTE: all three are required so the plan feels real. Max lengths keep the keepsake image tidy. -->
+  <section class="card" id="s3">
+    <div class="lede">
+      <h2>What time suits you?</h2>
+      <p class="sub">Every field here is needed, so the plan feels real and made for you.</p>
+    </div>
+    <div class="pane">
+      <div class="chips" id="times"></div>
+      <div class="fields">
+        <input type="time" id="time" aria-label="Time" value="19:00" required>
+        <input id="place" maxlength="60" placeholder="Where should we meet? (required)" required>
+        <textarea id="note" maxlength="200" rows="3" placeholder="Anything you'd like me to know? (required)" required></textarea>
+      </div>
+      <div class="err" id="err3" role="alert"></div>
+      <div class="row"><button class="btn ghost" data-go="2">Back</button><button class="btn" data-go="4">Next</button></div>
+    </div>
+  </section>
+
+  <!-- STEP 4, THE BIG QUESTION: the heart button reveals gentle lines and fills with warmth. Yes leads to the keepsake, No leads to a kind goodbye screen. Both are always clickable. -->
+  <section class="card" id="s4">
+    <div class="lede">
+      <button class="bigheart" id="heart" type="button" aria-label="Tap the heart for a thought">
+        <svg viewBox="0 0 100 90" width="120" height="108" aria-hidden="true"><defs><linearGradient id="hg" x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0" stop-color="#e2476f"/><stop id="hs2" offset="0" stop-color="#e2476f"/><stop id="hs3" offset="0" stop-color="#fff" stop-opacity=".14"/><stop offset="1" stop-color="#fff" stop-opacity=".14"/></linearGradient></defs>
+          <path d="M50 85C10 55 0 35 0 22 0 8 12 0 25 0 37 0 46 7 50 15 54 7 63 0 75 0 88 0 100 8 100 22 100 35 90 55 50 85Z" fill="url(#hg)" stroke="#f3a78f" stroke-width="2"/></svg>
+      </button>
+      <div class="warmth" id="warmth">Tap the heart. It has something to say.</div>
+      <h2 class="shine" id="bigq">Will you go on a date with me?</h2>
+      <p class="tease" id="nomsg">Your choice, your pace.</p>
+    </div>
+    <div class="pane">
+      <div class="ask"><button class="btn" id="yes">Yes, I'd love to</button><button class="btn" id="no">Maybe another time</button></div>
+      <div class="row center"><button class="btn ghost" data-go="3">Back</button></div>
+    </div>
+  </section>
+
+  <!-- STEP 5, KEEPSAKE: the payoff comes first. The left side (on a phone, the top) is 'It's a date.' and the plan, shown ONCE as a keepsake. The right side (on a phone, below) is what she can do next, in order of importance: tell me on WhatsApp, save the plan, follow on Instagram, and a sincere note. Everything here is optional except the joy. Blocks marked data-rv glide in as she scrolls (see script section C4). -->
+  <section class="card" id="s5">
+    <div class="lede">
+      <div data-rv>
+        <h2>It's a date.</h2>
+        <p class="sub">Wonderful. Save the plan, screenshot it, and let the anticipation begin.</p>
+      </div>
+      <!-- THE PLAN: one real description list. The script fills it with a label (dt) and a value (dd) for each row, using textContent only, so a note full of angle brackets is just a note. -->
+      <div class="ticket" data-rv="slide">
+        <dl class="plan" id="plan"></dl>
+        <p class="thanks">Thank you for giving me your attention. I won't waste it.</p>
+      </div>
+    </div>
+    <div class="pane">
+      <!-- WHATSAPP MESSAGE BOX: ONE link, so a tap anywhere in it opens WhatsApp with her whole plan already written, so the first hello is easy. The class cta holds the design shared with the Instagram box below; cta-wa holds WhatsApp's colours. The link has no address yet: the script fills it in when she says yes, because only then are all her answers known. The logo is drawn with CSS (a green tile, a speech bubble and a phone handset), no image. The logo and the pill are decoration for the eyes and the finger, so screen readers skip them: the link's spoken name is the heading and its spoken description is the line under it. The span called vh is read aloud but never seen, and tells screen-reader users that a new tab opens. cta-ripples is an empty layer where the tap ripple is drawn.
+           Under the link, a closed drawer ('See the message first') holds the exact words as a chat bubble, so nothing is sent in secret, and the plan is not repeated on screen unless she asks to see it. The drawer sits OUTSIDE the link on purpose, because a link may not contain another interactive control. The wrapper (waWrap) is where the floating hearts are drawn. -->
+      <div class="cta-wrap" id="waWrap" data-rv>
+        <a class="cta cta-wa" id="wa" target="_blank" rel="noopener noreferrer" aria-labelledby="waHead" aria-describedby="waDesc">
+          <span class="cta-ripples" aria-hidden="true"></span>
+          <span class="cta-logo" aria-hidden="true"><span class="walogo"><i class="waphone"></i></span></span>
+          <span class="cta-pill" aria-hidden="true">Open WhatsApp</span>
+          <b class="cta-head" id="waHead">Tell me on WhatsApp<span class="vh"> (opens in a new tab)</span></b>
+          <span class="cta-desc" id="waDesc"><em>Everything you chose is already written. Nothing is sent until you press send in WhatsApp.</em></span>
+        </a>
+        <details class="preview" id="waPrev">
+          <summary>See the message first</summary>
+          <div class="chat" role="group" aria-label="Your WhatsApp message, ready to send">
+            <div class="bub" id="waBub">
+              <div class="typing" aria-hidden="true"><i></i><i></i><i></i></div>
+              <div class="msg" id="waMsg"></div>
+            </div>
+          </div>
+        </details>
+      </div>
+      <!-- SAVE ACTIONS: three small buttons in one row. -->
+      <div class="acts" data-rv>
+        <button class="btn" id="dl">Save image</button>
+        <button class="btn" id="ics">Add to calendar</button>
+        <button class="btn" id="cp">Copy text</button>
+      </div>
+      <!-- INSTAGRAM FOLLOW BOX: ONE box now (the old second Instagram card was merged into it). It is ONE link, so a tap anywhere in it (the logo, the words, the Follow pill or the empty space between them) opens her profile in a new tab and keeps this keepsake open. Inside: an animated logo drawn with CSS, the line 'Follow @avneetkumar.corporate on Instagram', the story lines, the two small steps that used to be a list, and a Follow pill. Same screen-reader notes as the WhatsApp box. Could go wrong: if the Instagram name ever changes, change the address here and the words in the heading together. -->
+      <a class="cta cta-ig" id="igFollow" data-rv href="https://www.instagram.com/avneetkumar.corporate/" target="_blank" rel="noopener noreferrer" aria-labelledby="igHead" aria-describedby="igDesc">
+        <span class="cta-ripples" aria-hidden="true"></span>
+        <span class="cta-logo" aria-hidden="true"><span class="iglogo"><i class="iglens"></i><i class="igflash"></i></span></span>
+        <span class="cta-pill" aria-hidden="true">Follow</span>
+        <b class="cta-head" id="igHead">Follow <span class="ighandle">@avneetkumar.corporate</span> on Instagram<span class="vh"> (opens in a new tab)</span></b>
+        <span class="cta-desc" id="igDesc"><em>Don't follow me… unless you're curious how this story goes. Make the first move, and once I accept, you're officially my date partner.</em>
+        <small>Then screenshot your plan and send it to me in a message. Entirely your choice, though curious people rarely wait too long.</small></span>
+        <small class="igline" id="igLine" aria-live="off"></small>
+      </a>
+      <button class="textbtn" id="igLater" type="button">Maybe later</button>
+      <p class="note" id="igNote" role="status"></p>
+    </div>
+    <!-- THE PERSONAL NOTE and START OVER sit directly inside the card (not inside the answer side), so on a wide screen they can drop under the plan in the left column. On a phone they simply come last, after everything she can do. -->
+    <div class="promise" data-rv>
+      <h3>From me, honestly</h3>
+      <p>I'm genuinely serious about this date. It isn't a game or a passing moment. I'd like to get to know you properly: what makes you laugh, what you care about, how you see the world. Go at whatever pace feels right to you.</p>
+      <p>And if it isn't for you, I'll still hope your week is a kind one.</p>
+    </div>
+    <div class="row center"><button class="btn ghost" id="again">Start over</button></div>
+  </section>
+
+  <!-- STEP 6, THE GRACEFUL NO: shown when she chooses 'Maybe another time'. No guilt, no countdown, just respect and a way back. Not part of the progress dots on purpose. -->
+  <section class="card" id="s6">
+    <div class="lede">
+      <h2>Thank you for being honest.</h2>
+      <p class="sub">That takes confidence, and I respect it. No pressure, no hard feelings. The invitation stays open if you ever feel like it.</p>
+    </div>
+    <div class="pane">
+      <div class="row center"><button class="btn" id="rethink">Let me think again</button></div>
+      <div class="row center"><button class="btn ghost" id="restart2">Start over</button></div>
+    </div>
+  </section>
+</main>
+
+<!-- LEGAL LINKS: always on screen, on every step, because she should be able to read how her answers are treated BEFORE she types them. Two plain buttons open one small dialog (the Privacy policy or the Terms of service). They are buttons, not links, so nothing leaves the page. -->
+<nav class="legal" aria-label="Legal">
+  <button class="link" id="openPrivacy" type="button">Privacy policy</button>
+  <button class="link" id="openTerms" type="button">Terms of service</button>
+</nav>
+
+<!-- CREDITS: the audit button and the creator signature. They stay hidden while she answers the questions, so every step feels clean and private, and they appear only on the two finish screens (the keepsake and the kind goodbye), at the very end of the page. The script flips a switch called .done on the page inside show(). Could go wrong: while hidden, the audit button and View source cannot be reached, so to test them, finish the journey first. -->
+<div class="credits" id="credits">
+<!-- The honest-review button: runs real checks on this very page when clicked -->
+<button class="auditbtn" id="auditBtn" type="button">Code review &amp; security audit</button>
+
+<!-- FOOTER: creator signature, a live year and the View source link. The year is filled by JavaScript so the page never looks stale. -->
+<footer>
+  Made by avneetkumar.corporate | avneetkumarindia | Avneet.kumar<br>
+  Built by hand, in a single file. &copy; <span id="yr"></span>
+  <button class="link" id="viewSrc" type="button">View source</button>
+</footer>
+</div>
+
+<!-- PRIVACY AND TERMS DIALOG: two short documents in plain words, with two tabs to switch between them. Escape or Close shuts it and hands focus back to the button that opened it. Keep these texts true: if the page ever starts storing or sending anything new, change the words here at the same time. Could go wrong: these are plain-language drafts written for a small personal page, not legal advice. If this page ever becomes a business, have a lawyer read them. -->
+<div id="legal" role="dialog" aria-modal="true" aria-labelledby="legalTitle">
+  <div class="legalbox">
+    <div class="legalhead"><h3 id="legalTitle">Privacy and terms</h3><button class="btn ghost" id="legalClose" type="button">Close</button></div>
+    <div class="legaltabs" role="group" aria-label="Choose a document">
+      <button id="legalTabP" type="button" aria-pressed="true">Privacy policy</button>
+      <button id="legalTabT" type="button" aria-pressed="false">Terms of service</button>
+    </div>
+    <div class="legalbody" id="legalBody" tabindex="0" role="region" aria-label="Document text">
+      <section id="legalP">
+        <p class="stamp">Privacy policy. Last updated 23 October 2026.</p>
+        <h4>Who made this</h4>
+        <p>This page is a personal invitation made by Avneet Kumar (avneetkumar.corporate on Instagram). It is not a company product, and there is no account to create.</p>
+        <h4>What you type</h4>
+        <p>Your name, intention, moods, date, time, place and note stay on your device. They live in the page's memory only while it is open, and they are gone when you reload or tap Start over. This page has no server of its own and uploads nothing.</p>
+        <h4>When something leaves your device</h4>
+        <p>Only when you choose it. Save image and Add to calendar create files on your device. Copy text puts the plan on your clipboard. Open WhatsApp loads a WhatsApp link that carries the pre-written message, so WhatsApp can see that text when the link opens; it reaches the creator only if you press send inside WhatsApp, and WhatsApp's own privacy policy applies. Follow on Instagram opens Instagram in a new tab without telling it which page you came from, and Instagram's own policy applies there.</p>
+        <h4>Cookies and tracking</h4>
+        <p>None. There are no cookies, no analytics, no adverts, and no third-party scripts, fonts or images.</p>
+        <h4>One small exception</h4>
+        <p>The creator's door (the source code and code review panels) saves a wrong-key counter and a lock time in this browser's local storage. It never holds your answers.</p>
+        <h4>Hosting</h4>
+        <p>Wherever this file is hosted, the host may keep ordinary server logs, such as your IP address and visit time. This page cannot see or control them.</p>
+        <h4>Age</h4>
+        <p>This invitation is meant for adults, 18 and over.</p>
+        <h4>Questions</h4>
+        <p>Message @avneetkumar.corporate on Instagram. If this policy changes, the date above changes.</p>
+      </section>
+      <section id="legalT" hidden>
+        <p class="stamp">Terms of service. Last updated 23 October 2026.</p>
+        <h4>Agreeing</h4>
+        <p>By using this page you accept these short terms. If you do not, please close it.</p>
+        <h4>What this is</h4>
+        <p>A personal, non-commercial invitation. It is not a dating service. There are no accounts, and nothing is bought or sold.</p>
+        <h4>No obligation</h4>
+        <p>Saying yes, or maybe another time, commits nobody to anything. A yes here is an invitation to talk.</p>
+        <h4>Your answers</h4>
+        <p>You choose what to type and what to send. Enter only your own details, and nothing you would mind seeing in a screenshot.</p>
+        <h4>Be kind</h4>
+        <p>Do not use this page or its message button to harass, threaten or deceive anyone.</p>
+        <h4>Meeting safely</h4>
+        <p>Meet in a public place, tell a friend where you are going, and trust your instincts.</p>
+        <h4>Other apps</h4>
+        <p>WhatsApp and Instagram have their own terms. This page is not affiliated with or endorsed by either.</p>
+        <h4>The source viewer</h4>
+        <p>The page can show its own code. The key on that door is a courtesy lock, not security.</p>
+        <h4>As is</h4>
+        <p>The page is provided as it is. Downloads, calendar files, copying and sound depend on your browser and device, and the page may not work everywhere or stay online.</p>
+        <h4>Responsibility</h4>
+        <p>To the extent the law allows, the creator is not responsible for loss or damage from using this page, or from anything that happens between people who meet through it.</p>
+        <h4>Changes</h4>
+        <p>These terms may be updated. The date above changes when they are.</p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- SOURCE DIALOG: shows the page's own code with statistics. Copy and Download use the browser, not a server. Escape closes it. -->
+<div id="src" role="dialog" aria-modal="true" aria-label="Source code">
+  <div class="stats" id="stats"></div>
+  <textarea id="code" readonly aria-label="Page source code"></textarea>
+  <div class="row" style="margin:0"><button class="btn" id="cpSrc">Copy</button><button class="btn" id="dlSrc">Download</button><button class="btn ghost" id="closeSrc" style="color:var(--cream)">Close</button></div>
+</div>
+
+<!-- A LITTLE SECRET, for the curious and the brave: whatever you do, do NOT type the name "avneet" at the door below. It is the name of the one who built all this, and saying it out loud would be a terrible, wonderful mistake. Capital letters are welcome, hearts are not checked. -->
+<!-- KEY GATE: asks for the creator's key before the source viewer or the audit opens. Client-side only, so it hides the panels but is not real security (see the audit report). -->
+<div id="gate" role="dialog" aria-modal="true" aria-label="Enter access key">
+  <div class="gatebox">
+    <h3>Creator's door</h3>
+    <p class="sub" style="margin-bottom:12px">The code and the review live behind this door. Enter the key to continue.</p>
+    <input id="gateKey" type="password" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Access key" placeholder="Access key">
+    <div id="gateErr" role="alert" style="color:#ff9bb0;min-height:1.4em;margin:8px 0;font-family:var(--serif);font-style:italic"></div>
+    <div id="gateLock" style="display:none;margin:4px 0 12px;padding:12px;border-radius:var(--r2);background:rgba(255,255,255,.07);text-align:center">
+      <div style="font-size:.8rem;opacity:.8;margin-bottom:4px">The door is resting for</div>
+      <div id="gateTimer" role="timer" style="font-family:var(--serif);font-size:1.25rem;color:var(--gold)"></div>
+      <p style="font-family:var(--serif);font-style:italic;line-height:1.5;font-size:.92rem;margin-top:10px">Three wrong keys, and this door rests for three years. Don't wait for it. Forget this door, really. But the truly curious always find their way back.</p>
+    </div>
+    <div class="row" style="margin-top:4px"><button class="btn ghost" id="gateCancel" type="button" style="color:var(--cream)">Cancel</button><button class="btn" id="gateOk" type="button">Unlock</button></div>
+  </div>
+</div>
+
+<div id="audit" role="dialog" aria-modal="true" aria-label="Code review and security audit">
+  <div class="row" style="margin:0">
+    <strong style="font-family:var(--serif);font-size:1.15rem">Code review &amp; security audit</strong>
+    <span><button class="btn" id="auditRun" type="button">Run again</button> <button class="btn ghost" id="auditClose" type="button" style="color:var(--cream)">Close</button></span>
+  </div>
+  <div id="auditBody"></div>
+</div>
+<script>
+/* ===== A. Snapshot of the source (taken before the page changes) ===== */
+// SOURCE SNAPSHOT: grabbed before the page changes, so the viewer and the audit read (almost) the original markup. Could go wrong: this is the browser's re-serialised version, so spacing and attribute order can differ slightly from the file on disk.
+var SOURCE = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+
+/* ===== A2. Runtime error log: the audit reads this, so it reports real errors, not vibes ===== */
+var RUNTIME_ERRORS = [];
+window.addEventListener("error", function (e) { RUNTIME_ERRORS.push(String(e.message)); });
+window.addEventListener("unhandledrejection", function (e) { RUNTIME_ERRORS.push("Unhandled promise: " + String(e.reason)); });
+
+/* ===== B. Small helpers ===== */
+var $ = function (id) { return document.getElementById(id); };
+var state = { step: 0, moods: [] };
+function toast(t) { var e = $("toast"); e.textContent = t; e.classList.add("on"); setTimeout(function () { e.classList.remove("on"); }, 1800); }
+// AUDIO: one shared AudioContext, created lazily. Browsers cap how many you may open, and spamming new ones is like texting someone 40 times in a row.
+var AC = null; // one shared AudioContext, created on first use
+function beep(f) {
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === "suspended") AC.resume();
+    var o = AC.createOscillator(), g = AC.createGain();
+    o.frequency.value = f; g.gain.value = .08; o.connect(g); g.connect(AC.destination); o.start(); o.stop(AC.currentTime + .15);
+  } catch (e) { /* no sound is fine, romance survives silence */ }
+}
+// Tiny helpers: pad adds a leading zero, iso turns a Date into YYYY-MM-DD for comparisons (strings in that format sort correctly, which is a small miracle).
+function pad(n) { return (n < 10 ? "0" : "") + n; }
+function iso(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+
+/* ===== C0. Whisper engine: the words change as she fills the form ===== */
+function nm() { return $("to").value.trim() || "you"; }
+// WHISPER: fades the line out, swaps the text, fades in. The timer id is stored so a fast second change cancels the slow first one (race condition fixed).
+var whisperT;
+function whisper(t) { var w = $("whisper"); clearTimeout(whisperT); w.style.opacity = 0; whisperT = setTimeout(function () { w.textContent = t; w.style.opacity = 1; }, 220); }
+// COPY BANK: lines that react to her choices. Tone rule: teasing, caring, never pleading. Could go wrong: if a mood label is renamed above, its line here silently goes missing, so keep the keys in sync.
+var MOOD_LINES = {
+  "Candlelit dinner": "Candlelight. You want to be seen, not rushed. I noticed.",
+  "Cozy café": "A café. You like it quiet and real. I'll listen more than I talk.",
+  "Movie night": "A movie? Fine, but I'll be watching you more than the screen.",
+  "Stargazing": "Stars. You think nobody plans that anymore. I will.",
+  "Sunset walk": "Sunsets don't wait for anyone. Neither should we.",
+  "Adventure": "Adventure. You're braver than you let people see.",
+  "Dessert crawl": "Dessert first. Good. Life is short, and so is this window.",
+  "Surprise me": "You trust me with a surprise. That's rare, and I won't waste it."
+};
+var TIME_LINES = { "11:30": "Brunch. Slow, early, unhurried. I'll save you the best seat.", "16:00": "Afternoon light is the kindest. I'll be there before you arrive.",
+  "19:00": "Evening. The best hours go first, so good choice.", "21:30": "Late night. Then the hours are ours and nobody else's." };
+// Default whisper for each screen number. Index 6 is the graceful-no screen.
+function whisperFor(n) {
+  var t = nm(), you = t === "you";
+  whisper([
+    (you ? "This" : t + ", this") + " was made for one person only. You can close it, but you'll wonder what was inside.",
+    "Don't rush. Whatever you pick, I'll make it easy and kind.",
+    "Pick what feels right. There's no wrong answer here.",
+    "Almost there. One last question, and you can answer it your way.",
+    "No pressure. The best moments are the ones we choose ourselves.",
+    "I noticed every choice you made. That's what paying attention looks like.",
+    "Your choice, your pace."
+  ][n]);
+}
+// Reacts to how soon the date is. Compares whole days (time stripped) so 'tomorrow' is not wrong at 11 PM.
+function dateWhisper() {
+  var v = $("date").value; if (!v) return;
+  var p = v.split("-"), t0 = new Date(); t0 = new Date(t0.getFullYear(), t0.getMonth(), t0.getDate());
+  var d = Math.round((new Date(+p[0], +p[1] - 1, +p[2]) - t0) / 864e5);
+  whisper(d <= 1 ? "That soon? Bold. I like it."
+    : d <= 7 ? "This week. Good. Plans like this are best while they're fresh."
+    : "Planning ahead. I like that. Anticipation is half the fun.");
+}
+
+/* ===== C2. Rotating lines in the Instagram banner ===== */
+// Rotating banner lines (every 5.5 seconds). Voice: confident, curious, caring, never desperate.
+var IG_LINES = ["Most people scroll past. The ones who don't usually end up with the best stories.",
+  "I notice who takes the first step. I always do.",
+  "I'd rather you follow because you're curious, not because I asked.",
+  "No rush. But good timing has a way of not repeating itself.",
+  "Don't follow if you're only half sure. I'd rather have your whole attention.",
+  "Whatever you decide, I hope today feels a little lighter because of this.",
+  "You've read this far. Part of you already knows.",
+  "Some things are better started than wondered about.",
+  "If it's meant to be a lovely story, it begins with one small tap.",
+  "I'll be paying attention. Quietly, and kindly."];
+var igI = 0, igTimer = null, igT;
+function showIGLine() {
+  var el = $("igLine"); el.style.opacity = 0;
+  clearTimeout(igT); igT = setTimeout(function () { el.textContent = IG_LINES[igI++ % IG_LINES.length]; el.style.opacity = 1; }, 350);
+}
+// Shows one story line now and, normally, swaps to the next every 5.5 seconds. In calm mode it shows ONE line and leaves it, because text that changes by itself is movement too: a phone set to 'remove animations' should get a box that holds still.
+function startIGLines() { clearInterval(igTimer); showIGLine(); if (calm()) return; igTimer = setInterval(showIGLine, 5500); }
+/* ===== C3. Tap ripple for the two call-to-action boxes ===== */
+// When a finger (or the mouse) goes down on a box, a soft circle grows from that exact spot and fades. It tells her 'yes, I felt that' even before the new tab opens. The circle lives in the empty .cta-ripples layer, which clips it to the box's rounded corners, and it deletes itself when its animation ends. Skipped in calm mode. Each box is a normal link, so this only adds the visual: it can never block the redirect. Could go wrong: pointerdown is not sent for keyboard use, so Enter just follows the link without a ripple.
+function addRipple(box) {
+  box.addEventListener("pointerdown", function (e) {
+    if (calm()) return;
+    var r = box.getBoundingClientRect(), d = Math.round(Math.max(r.width, r.height) * 1.6), dot = document.createElement("span");
+    dot.className = "cta-ripple"; dot.style.width = dot.style.height = d + "px";
+    dot.style.left = Math.round(e.clientX - r.left - d / 2) + "px"; dot.style.top = Math.round(e.clientY - r.top - d / 2) + "px";
+    dot.addEventListener("animationend", function () { dot.remove(); });
+    box.querySelector(".cta-ripples").appendChild(dot);
+  });
+}
+addRipple($("igFollow")); addRipple($("wa"));
+/* ===== C4. Scroll reveal: blocks glide in as they come into view ===== */
+// Blocks marked data-rv in the HTML slide up a little (and most also fade in) the first time they scroll into view. ONE IntersectionObserver (the browser's own scroll-watcher) watches them all.
+// SAFETY, in plain words: nothing is hidden until the watcher has reported back at least once. That first report proves it really works, and only then does the script switch hiding on (the class 'rv' on the page). If the watcher is missing, broken or blocked, or her device asks for calm, nothing is ever hidden, so there can never be a blank hole where a block should be.
+// Blocks already on screen when a step opens (revealT0 is the moment it opened) just appear with the step and do not animate a second time; blocks that arrive together get a tiny stagger.
+var revealT0 = performance.now(), rvIO = null;
+(function () {
+  if (!("IntersectionObserver" in window) || calm()) return;
+  try {
+    rvIO = new IntersectionObserver(function (es) {
+      var k = 0, quiet = performance.now() - revealT0 < 450;
+      es.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        var el = e.target; rvIO.unobserve(el);
+        if (quiet) { el.classList.add("in", "rv-quiet"); return; }
+        el.style.setProperty("--d", Math.min(k++, 3) * .08 + "s"); el.classList.add("in");
+      });
+      document.documentElement.classList.add("rv"); // the watcher works, so hiding may begin
+    }, { threshold: .12, rootMargin: "0px 0px -6% 0px" });
+    document.querySelectorAll("[data-rv]").forEach(function (el) { rvIO.observe(el); });
+  } catch (err) { document.documentElement.classList.remove("rv"); }
+})();
+// A very fast jump (the End key, find-in-page) can carry the page PAST a block in a single frame. The watcher only reports blocks that come INTO view, so such a block would stay hidden above her until she scrolled back. This small sweep runs while she scrolls (at most once per screen refresh) and quietly shows any block that is already above the top of the screen. Blocks inside steps that are not open are skipped (offsetParent is null for them).
+var rvTick = false;
+window.addEventListener("scroll", function () {
+  if (!rvIO || rvTick) return;
+  rvTick = true;
+  requestAnimationFrame(function () {
+    rvTick = false;
+    document.querySelectorAll("[data-rv]:not(.in)").forEach(function (el) {
+      if (el.offsetParent !== null && el.getBoundingClientRect().bottom < 0) { rvIO.unobserve(el); el.classList.add("in", "rv-quiet"); }
+    });
+  });
+}, { passive: true });
+/* ===== C. Step navigation ===== */
+// THE STEP LIST: the ids of the seven cards, in order. show() walks this list, so adding a step means adding its card in the HTML and its id here (and updating reqStep and the progress dashes).
+var STEP_IDS = ["s0", "s1", "s2", "s3", "s4", "s5", "s6"];
+// SCREEN SWITCHER: hides every card, shows one, updates the dots, the 'Step N of 5' line and the whisper, shows or hides the credits, moves focus to the heading (for screen readers) and scrolls to the top. The safety net at the start sends her back if any earlier answer is missing.
+function show(n) {
+  var miss = reqStep(n); if (miss > -1 && miss < n) n = miss; // safety net: never skip an unanswered step
+ 
+  STEP_IDS.forEach(function (id) { $(id).classList.remove("on"); });
+  $(STEP_IDS[n]).classList.add("on"); state.step = n; whisperFor(n); window.scrollTo(0, 0);
+  document.body.classList.toggle("done", n === 5 || n === 6); // the credits (audit button and signature) show only on the two finish screens
+  revealT0 = performance.now(); // scroll reveal (section C4): blocks already on screen right now just appear with the step
+  if (n === 5) { startIGLines(); resetWA(); } else clearInterval(igTimer);
+  var h = document.querySelector("#s" + n + " h1, #s" + n + " h2"); if (h) { h.setAttribute("tabindex", "-1"); h.focus({ preventScroll: true }); }
+  // PROGRESS: five dashes for five steps. Screens 0 to 4 say 'Step 1 of 5' up to 'Step 5 of 5'. The keepsake (5) is the finish line, so it says 'All set' with every dash lit. The goodbye (6) is not a step, so its line stays empty. Could go wrong: change the 5 here and the dashes in the HTML together.
+  $("stepNote").textContent = n <= 4 ? "Step " + (n + 1) + " of 5" : n === 5 ? "All set" : "";
+  document.querySelectorAll("#dots i").forEach(function (d, i) { d.classList.toggle("on", i <= (n === 6 ? 4 : n)); });
+}
+// Returns the first screen whose answers are missing before screen n (or -1 if all are filled)
+// THE GATEKEEPER: given a destination screen, returns the first earlier screen whose answers are missing (or -1 if all is well). Both the buttons and show() use it, so there is no secret side door. Could go wrong: add a new field and forget to add it here, and it silently becomes optional.
+function reqStep(n) {
+  // Screen 0 needs two answers: a real name (spaces do not count) and a real intention (the disabled hint option has the value "", so it does not count either).
+  if (n > 0 && (!$("to").value.trim() || !$("intent").value)) return 0;
+  if (n > 1 && state.moods.length === 0) return 1;
+  if (n > 2 && (!$("date").value || $("date").value < iso(new Date()))) return 2;
+  if (n > 3 && (!$("time").value || !$("place").value.trim() || !$("note").value.trim())) return 3;
+  return -1;
+}
+/* Gentle "not yet" messages: a little teasing, a little care, a little fear of missing out, never pleading.
+   Each failed attempt shows the next line, so she never sees the same sentence twice in a row. */
+// ERROR COPY: gentle 'not yet' messages. Each failed attempt moves to the next line so she never reads the same sentence twice.
+var ERR = {
+  name: ["Leave it blank if you like. But the best part only opens for someone with a name.",
+    "I can't plan something this good for a stranger. Tell me who you are.",
+    "Your name first. Then the good part, I promise.",
+    "Still shy? That's kind of charming. Type it anyway, and see what happens next."],
+  intent: ["Pick the one closest to your truth. I'd rather hear it than guess.",
+    "I'd like to know what you're hoping for. Choose the line that fits you best.",
+    "You can leave this empty. But the plans that go furthest start with an honest answer.",
+    "One tap, that's all. Honest beginnings make the best stories."],
+  mood: ["Not sure yet? That's fine. But every great evening starts with one small 'this feels like me'.",
+    "Pick just one. I'd hate for you to miss the evening that was made for you.",
+    "You can leave it empty. Just know the best plans usually go to the ones who choose.",
+    "One tap, that's all. The rest of the night unfolds from there."],
+  date: ["No rush. But a date without a day is just a lovely thought. Pick one and make it real.",
+    "The good evenings go quietly. Choose a day before someone else's plans do.",
+    "Any day works, as long as it's yours. Which one feels right?",
+    "Skip it if you want. But I think you're curious about how this ends."],
+  past: ["That day has already slipped away. Pick one that is still ahead of us.", "Time machines are not included. Choose a day from today onward."],
+  step3: ["You could skip this, but you'd miss the part where it all feels real.",
+    "So close. Don't stop right before the good part.",
+    "A plan with blanks is just a wish. Fill it in, and it becomes ours.",
+    "No hurry, truly. Just don't leave right when it's getting good."]
+};
+var errN = {};
+function errLine(k) { errN[k] = (errN[k] || 0) + 1; return ERR[k][(errN[k] - 1) % ERR[k].length]; }
+// Runs when she presses Next. If the gatekeeper objects: show the right message, shake the card, focus the empty field. Returns true only when she may continue.
+function validate(next) {
+  if (reqStep(next) !== state.step) return true;
+  var box = $("s" + state.step), focusEl = null;
+  if (state.step === 0) {
+    // Name first, because it is the first box she sees. Only when the name is fine do we point at the dropdown (and turn its border rose).
+    if (!$("to").value.trim()) { $("err0").textContent = errLine("name"); focusEl = $("to"); }
+    else { $("err0").textContent = errLine("intent"); focusEl = $("intent"); $("intent").setAttribute("aria-invalid", "true"); }
+  }
+  else if (state.step === 1) { $("err").textContent = errLine("mood"); }
+  else if (state.step === 2) { $("err2").textContent = errLine($("date").value ? "past" : "date"); focusEl = $("date"); }
+  else if (state.step === 3) {
+    var f = [["time", "a time"], ["place", "a place"], ["note", "a few words from you"]].filter(function (x) { return !$(x[0]).value.trim(); });
+    var list = f.map(function (x) { return x[1]; }).join(", ").replace(/, ([^,]*)$/, " and $1");
+    $("err3").textContent = errLine("step3") + " I only need " + list + ", then it's all yours."; focusEl = $(f[0][0]);
+  }
+  box.classList.remove("shake"); void box.offsetWidth; box.classList.add("shake"); if (focusEl) focusEl.focus();
+  return false;
+}
+document.querySelectorAll("[data-go]").forEach(function (b) {
+  b.addEventListener("click", function () {
+    var n = +b.dataset.go;
+    if (n > state.step && !validate(n)) return;
+    if (n === 4) { var t = $("to").value.trim(); $("bigq").textContent = t ? "Will you go on a date with me, " + t + "?" : "Will you go on a date with me?"; }
+    show(n);
+  });
+});
+
+/* ===== D. Build the choice chips (textContent only, so no XSS) ===== */
+// CHIP FACTORY: builds buttons with textContent (never HTML strings), so nothing she types or we define can turn into markup. The time and date groups behave like radio buttons.
+function makeChips(box, items, onPick) {
+  var radio = box.id === "quick" || box.id === "times"; // single-choice groups
+  items.forEach(function (it) {
+    var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = it.label; b.setAttribute("aria-pressed", "false");
+    if (it.v) b.dataset.v = it.v;
+    if (it.d !== undefined) { var dd = new Date(); dd.setDate(dd.getDate() + it.d); b.dataset.date = iso(dd); }
+    b.addEventListener("click", function () { onPick(it, b); if (radio) syncChips(); }); box.appendChild(b);
+  });
+}
+// Highlight the quick-pick chips that match what is in the date and time fields
+// Keeps the highlighted chips honest if she types a time or date by hand instead of tapping a chip.
+function syncChips() {
+  Array.prototype.forEach.call($("times").children, function (c) { var on = c.dataset.v === $("time").value; c.classList.toggle("sel", on); c.setAttribute("aria-pressed", on); });
+  Array.prototype.forEach.call($("quick").children, function (c) { var on = c.dataset.date === $("date").value; c.classList.toggle("sel", on); c.setAttribute("aria-pressed", on); });
+}
+// The moods on offer. Add one here and it appears automatically, along with a gap in MOOD_LINES if you forget its line.
+var MOODS = ["Candlelit dinner", "Cozy café", "Movie night", "Stargazing", "Sunset walk", "Adventure", "Dessert crawl", "Surprise me"];
+makeChips($("moods"), MOODS.map(function (m) { return { label: m }; }), function (it, b) {
+  var SUR = "Surprise me", i = state.moods.indexOf(it.label); // "Surprise me" can't be mixed with other moods
+  if (i > -1) state.moods.splice(i, 1);
+  else if (it.label === SUR) state.moods = [SUR];
+  else state.moods = state.moods.filter(function (m) { return m !== SUR; }).concat(it.label);
+  Array.prototype.forEach.call($("moods").children, function (ch) { var on = state.moods.indexOf(ch.textContent) > -1; ch.classList.toggle("sel", on); ch.setAttribute("aria-pressed", on); });
+  $("err").textContent = "";
+  var c = state.moods.length; beep(520 + c * 60);
+  whisper(c === 0 ? "Nothing yet? Don't worry, most people can't decide. You probably can't either." : c === 1 ? MOOD_LINES[state.moods[0]]
+    : c === 2 ? "Two? You're hard to read, and that's exactly what I like." : "You want it all. Fair. I'd rather over-care than under-plan.");
+});
+var today = new Date(); $("date").min = iso(today);
+var QUICK = [["Tomorrow", 1], ["This weekend", (6 - today.getDay() + 7) % 7 || 7], ["Next week", 7]];
+makeChips($("quick"), QUICK.map(function (q) { return { label: q[0], d: q[1] }; }), function (it) {
+  var d = new Date(); d.setDate(d.getDate() + it.d); $("date").value = iso(d); $("err2").textContent = ""; dateWhisper();
+});
+$("date").addEventListener("change", function () { $("err2").textContent = ""; dateWhisper(); syncChips(); });
+$("time").addEventListener("input", syncChips);
+["time", "place", "note"].forEach(function (id) { $(id).addEventListener("input", function () { if ($("time").value && $("place").value.trim() && $("note").value.trim()) $("err3").textContent = ""; }); });
+$("to").addEventListener("input", function () { if ($("to").value.trim()) $("err0").textContent = ""; });
+$("to").addEventListener("change", function () { if (state.step === 0) whisperFor(0); });
+$("to").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); document.querySelector("#s0 [data-go]").click(); } });
+// INTENTION DROPDOWN: once she picks, the rose warning border goes away, and the error line clears if her name is already filled (an unfixed name keeps its own message, so we never erase it by mistake). The answer is read straight from the select, so there is no second copy that could drift out of sync.
+$("intent").addEventListener("change", function () {
+  $("intent").removeAttribute("aria-invalid");
+  if ($("to").value.trim()) $("err0").textContent = "";
+});
+$("place").addEventListener("change", function () { whisper($("place").value.trim() ? "A real place. Now it stops being an idea and starts being a plan." : "Tell me where, so the plan feels real."); });
+$("note").addEventListener("change", function () { whisper($("note").value.trim() ? "You wrote something. I'll read it twice." : "Even a few words help me plan around you."); });
+makeChips($("times"), [["Brunch", "11:30"], ["Afternoon", "16:00"], ["Evening", "19:00"], ["Late night", "21:30"]].map(function (t) { return { label: t[0], v: t[1] }; }), function (it) { $("time").value = it.v; whisper(TIME_LINES[it.v]); });
+
+/* ===== E. The big question: a heart with something to say ===== */
+// THE HEART: each tap shows the next gentle line, fills the heart (15 percent per tap, capped at 100) and releases a few hearts. Entirely optional, since both answer buttons work from the first second.
+var taps = 0, teaseT;
+function teaseLines() {
+  var m = (state.moods[0] || "an evening out").toLowerCase();
+  return ["No pressure. The best moments are the ones we choose ourselves.",
+    "You can say no… but what if this becomes one of those unexpected, beautiful memories?",
+    "Maybe it's just a date. Maybe it's the beginning of a lovely story.",
+    "Your choice, your pace. I just thought we might have a little something worth exploring.",
+    "You picked " + m + " earlier. That tells me you already know what you like.",
+    "One evening. Good conversation. Zero expectations.",
+    "Curiosity is allowed. So is saying yes."];
+}
+$("heart").addEventListener("click", function () {
+  var lines = teaseLines(), w = Math.min((taps + 1) * 15, 100), t = $("nomsg"), r = $("heart").getBoundingClientRect();
+  t.style.opacity = 0; var line = lines[taps % lines.length]; taps++;
+  clearTimeout(teaseT); teaseT = setTimeout(function () { t.textContent = line; t.style.opacity = 1; }, 200);
+  $("hs2").setAttribute("offset", w / 100); $("hs3").setAttribute("offset", w / 100);
+  $("warmth").textContent = w < 100 ? "Warmth " + w + "%" : "Warmth 100%. Something's there. Whenever you're ready.";
+  $("heart").classList.toggle("warm", w >= 100); beep(440 + w * 3);
+  for (var i = 0; i < 6; i++) conf.push({ x: r.left + r.width / 2, y: r.top + r.height / 2, vx: Math.random() * 6 - 3, vy: -4 - Math.random() * 4, c: "#ff4f7b", r: 0, h: true });
+});
+// NO: leads to a calm screen. Deliberately boring in the best way, no chase, no shrink, no guilt.
+$("no").addEventListener("click", function () { show(6); }); // a calm, guilt-free goodbye
+// 'Maybe later': hides the Instagram box politely. Freedom to decline is the whole point. The box and the button are hidden with display:none, so nobody can Tab to something they cannot see; the kind note takes their place and is announced (it is a status area). The rotating lines inside the box are stopped too, so no timer keeps running for a box nobody can see.
+$("igLater").addEventListener("click", function () { // she can politely skip the Instagram step
+  clearInterval(igTimer); $("igFollow").style.display = "none"; this.style.display = "none";
+  $("igNote").textContent = "No worries at all. Your plan is saved, and the choice stays yours. I'll be around if curiosity wins later.";
+});
+$("rethink").addEventListener("click", function () { show(4); });
+$("restart2").addEventListener("click", function () { location.reload(); });
+// Formats the chosen date in her own language and locale. Builds the Date from parts to avoid the classic one-day-off timezone bug.
+function fmtDate() { var p = $("date").value.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" }); }
+function planLines() {
+  var l = ["Date: " + fmtDate(), "Time: " + tidy(fmtTime()), "Vibe: " + state.moods.join(", ")];
+  if ($("place").value.trim()) l.push("Where: " + $("place").value.trim());
+  if ($("note").value.trim()) l.push("Note: " + $("note").value.trim());
+  return l;
+}
+// YES: rebuilds the plan card from scratch (safe to click twice), then celebrates with confetti and two chimes. Each plan row becomes a label (dt) and a value (dd) made with textContent, so a note full of angle brackets is just a note. The thank-you line is already in the HTML. Could go wrong: the label is everything before the first colon-and-space, so labels must never contain one (none do).
+$("yes").addEventListener("click", function () {
+  var plan = $("plan"); plan.textContent = ""; // build the pairs safely, one by one
+  planLines().forEach(function (t) {
+    var i = t.indexOf(": "), k = document.createElement("dt"), v = document.createElement("dd");
+    k.textContent = t.slice(0, i); v.textContent = t.slice(i + 2); plan.appendChild(k); plan.appendChild(v);
+  });
+  buildWA(); // write the WhatsApp message now, while every answer is fresh
+  show(5); confetti(); beep(660); setTimeout(function () { beep(880); }, 160);
+});
+$("again").addEventListener("click", function () { location.reload(); });
+
+/* ===== F. Keepsake actions ===== */
+// Plain text version of the plan for the Copy button.
+function shareText() { var t = $("to").value.trim();
+  return "It's a date" + (t ? ", " + t : "") + "! 💛\n" + planLines().join("\n"); }
+$("cp").addEventListener("click", function () {
+  (navigator.clipboard ? navigator.clipboard.writeText(shareText()) : Promise.reject()).then(function () { toast("Copied"); }, function () { toast("Copy not available here"); });
+});
+// Creates a temporary file in memory, clicks an invisible link, then frees the memory. Could go wrong: some in-app browsers block downloads entirely.
+function download(name, mime, data) { var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([data], { type: mime })); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000); }
+// CALENDAR FILE (.ics): start from the picked date and time, end two hours later (computed with real dates so 11 PM does not end before it starts). Text is escaped so commas and semicolons cannot corrupt the file. Floating local time means no timezone field.
+$("ics").addEventListener("click", function () {
+  var st = new Date($("date").value + "T" + $("time").value), en = new Date(st.getTime() + 2 * 3600 * 1000); // end = start + 2 hours, across midnight too
+  function stamp(x) { return x.getFullYear() + pad(x.getMonth() + 1) + pad(x.getDate()) + "T" + pad(x.getHours()) + pad(x.getMinutes()) + "00"; }
+  var esc = function (s) { return s.replace(/[\\;,]/g, "\\$&").replace(/\n/g, "\\n"); };
+  download("our-date.ics", "text/calendar", ["BEGIN:VCALENDAR", "VERSION:2.0", "BEGIN:VEVENT", "UID:" + Date.now() + "@ourdate", "DTSTAMP:" + new Date().toISOString().replace(/[-:]|\.\d+/g, ""),
+    "DTSTART:" + stamp(st), "DTEND:" + stamp(en), "SUMMARY:Our date 💛", "LOCATION:" + esc($("place").value), "DESCRIPTION:" + esc(planLines().join("\n")),
+    "BEGIN:VALARM", "TRIGGER:-PT1H", "ACTION:DISPLAY", "DESCRIPTION:Date in 1 hour", "END:VALARM", "END:VEVENT", "END:VCALENDAR"].join("\r\n"));
+});
+// KEEPSAKE IMAGE: draws the plan onto a hidden canvas and saves a PNG, no libraries. Long lines wrap by hand. The heart is drawn from curves (no emoji), so it looks the same on every device. Could go wrong: a browser without canvas.toBlob cannot save it (the audit lists this).
+$("dl").addEventListener("click", function () { // draw the keepsake on a canvas, then save as PNG
+  var c = document.createElement("canvas"); c.width = 900; c.height = 1200; var x = c.getContext("2d");
+  x.fillStyle = "#2a0c17"; x.fillRect(0, 0, 900, 1200); // flat wine, the same as the cards
+  x.strokeStyle = "#f3a78f"; x.lineWidth = 4; x.strokeRect(40, 40, 820, 1120); x.textAlign = "center";
+  x.fillStyle = "#f3a78f"; x.beginPath(); x.moveTo(450, 280); // the heart: two bumps and a point
+  x.bezierCurveTo(372, 222, 356, 176, 392, 158); x.bezierCurveTo(420, 146, 444, 160, 450, 186);
+  x.bezierCurveTo(456, 160, 480, 146, 508, 158); x.bezierCurveTo(544, 176, 528, 222, 450, 280); x.closePath(); x.fill();
+  x.fillStyle = "#fde8e2"; x.font = "bold 84px Georgia,serif"; x.fillText("It's a date.", 450, 400);
+  x.font = "42px Georgia,serif"; var y = 540;
+  planLines().forEach(function (line) { while (line.length) { var cut = line.length > 34 ? line.lastIndexOf(" ", 34) : line.length; if (cut < 1) cut = 34; x.fillText(line.slice(0, cut), 450, y); line = line.slice(cut).trim(); y += 70; } });
+  x.fillStyle = "#f3a78f"; x.font = "28px Georgia,serif"; x.fillText("Made for one person.", 450, 1110);
+  c.toBlob(function (b) { var a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = "our-date.png"; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000); });
+});
+
+/* ===== F2. WhatsApp reply: her choices, written out neatly ===== */
+// THE NUMBER: country code plus digits only (no plus sign, no spaces, no brackets), which is the shape wa.me wants. +91 (889) 457-3186 becomes 918894573186. This is the only place to change it.
+var WA_NUMBER = "918894573186";
+// Squeezes every run of spaces, tabs and line breaks into one space and trims the ends, so odd spacing in a note cannot make a messy message.
+function tidy(s) { return String(s).replace(/\s+/g, " ").trim(); }
+// Turns "19:00" into her own style of time ("7:00 PM" or "19:00"), the same way fmtDate() does for the day.
+function fmtTime() { var p = $("time").value.split(":"); return new Date(2000, 0, 1, +p[0], +p[1]).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }); }
+// THE MESSAGE AS PLAIN DATA: a hello, a heading, label-and-value rows, a goodbye. The WhatsApp text and the preview bubble are both made from this one list, so they can never disagree. A row with nothing in it is left out instead of showing an empty label.
+function waParts() {
+  var sel = $("intent"), who = tidy($("to").value), rows = [];
+  if (sel.selectedIndex > 0) rows.push(["What I'm hoping for", tidy(sel.options[sel.selectedIndex].text)]);
+  if (state.moods.length) rows.push(["Vibe", state.moods.join(", ")]);
+  rows.push(["Date", tidy(fmtDate())], ["Time", tidy(fmtTime())]); // tidy also turns the odd non-breaking spaces some browsers put in dates and times into ordinary spaces
+  if (tidy($("place").value)) rows.push(["Place", tidy($("place").value)]);
+  if (tidy($("note").value)) rows.push(["My note", tidy($("note").value)]);
+  return { hello: "Hi, it's " + (who || "me") + ". My answer is yes, I'd love to go on a date with you.", head: "Our date plan", rows: rows, bye: "Looking forward to it. 💛" };
+}
+// The text WhatsApp opens with. WhatsApp turns *this* into bold, so the heading and the labels are wrapped in stars. \n is a line break; two in a row leave a blank line between groups.
+function waText() {
+  var p = waParts();
+  return p.hello + "\n\n*" + p.head + "*\n" + p.rows.map(function (r) { return "*" + r[0] + ":* " + r[1]; }).join("\n") + "\n\n" + p.bye;
+}
+// The full link. encodeURIComponent makes every character safe inside a web address (spaces, line breaks, apostrophes, emoji), so nothing she typed can break the link or sneak extra parts into it. The start of the address is fixed (https, wa.me, our number), so this link can only ever open WhatsApp.
+function waLink() { return "https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent(waText()); }
+// Writes the preview bubble and the link. textContent only, never HTML strings, so a name like <b>Asha</b> stays plain text. Labels are bold, as WhatsApp will show them. Called when she says yes.
+function buildWA() {
+  var p = waParts(), box = $("waMsg"); box.textContent = "";
+  function line(cls) { var d = document.createElement("div"); if (cls) d.className = cls; box.appendChild(d); return d; }
+  line().textContent = p.hello;
+  var h = line("gap"), hb = document.createElement("b"); hb.textContent = p.head; h.appendChild(hb);
+  p.rows.forEach(function (r) { var d = line(), b = document.createElement("b"); b.textContent = r[0] + ":"; d.appendChild(b); d.appendChild(document.createTextNode(" " + r[1])); });
+  line("gap").textContent = p.bye;
+  $("wa").href = waLink();
+}
+// CALM CHECK: true when her device asks for less motion.
+function calm() { return matchMedia("(prefers-reduced-motion:reduce)").matches; }
+// FLOATING HEARTS: n little hearts drift up from an element. CSS does the moving (no animation loop to run) and each heart deletes itself when it finishes. Skipped in calm mode.
+function floatHearts(from, n) {
+  if (calm()) return;
+  var host = $("waWrap"), hb = host.getBoundingClientRect(), fb = from.getBoundingClientRect();
+  for (var i = 0; i < n; i++) {
+    var h = document.createElement("span"); h.className = "fh"; h.textContent = "\u2665"; h.setAttribute("aria-hidden", "true");
+    h.style.left = Math.round(fb.left - hb.left + fb.width * (.15 + Math.random() * .7)) + "px";
+    h.style.top = Math.round(fb.top - hb.top + fb.height * .25) + "px";
+    h.style.fontSize = Math.round(13 + Math.random() * 9) + "px";
+    h.style.animationDelay = (i * .14) + "s";
+    h.style.setProperty("--dx", Math.round(Math.random() * 56 - 28) + "px");
+    h.addEventListener("animationend", function () { this.remove(); });
+    host.appendChild(h);
+  }
+}
+// THE TYPING MOMENT (see the notes in CSS section 5b). The preview drawer is closed at first. The instant she taps it open, the bubble shrinks to three typing dots (it is armed BEFORE the drawer opens, so the first thing she sees is the dots, never a flash of the finished message), waits 1.4 seconds, then pops open into the message and a few hearts drift up. It plays once per visit to the keepsake; opening the drawer again just shows the message. Could go wrong: in calm mode there is no show (the message is simply there), and the held room is measured when the drawer has opened, because a closed drawer has no height to measure.
+var waT = null, waPlaying = false, waDone = false;
+function resetWA() { // called whenever the keepsake opens: close the drawer, stop any show, put the bubble back to rest (safe to call twice)
+  var b = $("waBub"); clearTimeout(waT); waPlaying = false; waDone = false;
+  b.classList.remove("arm", "sent"); b.parentNode.style.minHeight = ""; $("waPrev").open = false;
+}
+$("waPrev").querySelector("summary").addEventListener("click", function () { // runs just BEFORE the drawer changes state
+  if ($("waPrev").open || waDone || waPlaying || calm()) return; // only when it is about to OPEN, and only the first time
+  $("waBub").classList.add("arm"); waPlaying = true; // armed first: small bubble with dots, words waiting
+});
+$("waPrev").addEventListener("toggle", function () { // runs just AFTER the drawer changed state
+  if (!this.open || !waPlaying) return;
+  var b = $("waBub"), chat = b.parentNode;
+  b.classList.remove("arm"); chat.style.minHeight = chat.offsetHeight + "px"; b.classList.add("arm"); // measure the finished message, then go back to dots (all in one breath, so nothing is painted between)
+  clearTimeout(waT);
+  waT = setTimeout(function () { // after a moment of 'typing...', the words arrive
+    chat.style.minHeight = ""; b.classList.add("sent"); waPlaying = false; waDone = true; floatHearts(b, 4); // let go of the held room: the message now fills it by itself
+  }, 1400);
+});
+// The link itself opens WhatsApp (that is the browser's job, so it works even if this script were blocked). This only adds a burst of hearts from the pill and a soft chime.
+$("wa").addEventListener("click", function () { floatHearts(this.querySelector(".cta-pill"), 8); beep(740); });
+
+/* ===== G. Background: floating hearts + confetti (hand-made canvas) ===== */
+// ANIMATION ENGINE: hearts drift upward, confetti falls. One requestAnimationFrame loop for everything, skipped entirely under reduced motion.
+var cv = $("bg"), cx = cv.getContext("2d"), parts = [], conf = [];
+function resize() { cv.width = innerWidth; cv.height = innerHeight; }
+addEventListener("resize", resize); resize();
+for (var i = 0; i < 22; i++) parts.push({ x: Math.random() * innerWidth, y: Math.random() * innerHeight, s: 10 + Math.random() * 18, v: .25 + Math.random() * .6, p: Math.random() * 6 });
+// Burst of 140 pieces from the screen centre; every fourth piece is a heart. The frame loop deletes pieces that fall off-screen so memory does not grow.
+function confetti() { for (var i = 0; i < 140; i++) conf.push({ x: innerWidth / 2, y: innerHeight / 2, vx: Math.random() * 14 - 7, vy: Math.random() * -14 - 2, c: ["#f3a78f", "#ff4f7b", "#fde8e2"][i % 3], r: 3 + Math.random() * 4, h: i % 4 === 0 }); }
+// One animation frame: clear, draw hearts, move and draw confetti, ask for the next frame. Browsers pause this in hidden tabs, so it costs nothing while she is texting her friends about you.
+function frame(t) {
+  cx.clearRect(0, 0, cv.width, cv.height); cx.textAlign = "center"; cx.fillStyle = "#ff6f91";
+  parts.forEach(function (p) { p.y -= p.v; if (p.y < -30) { p.y = cv.height + 30; p.x = Math.random() * cv.width; }
+    cx.globalAlpha = .22; cx.font = p.s + "px serif"; cx.fillText("♥", p.x + Math.sin(t / 900 + p.p) * 16, p.y); });
+  cx.globalAlpha = 1;
+  conf = conf.filter(function (q) { return q.y < cv.height + 20; });
+  conf.forEach(function (q) { q.vy += .35; q.x += q.vx; q.y += q.vy; cx.fillStyle = q.c; if (q.h) { cx.font = "22px serif"; cx.fillText("♥", q.x, q.y); } else cx.fillRect(q.x, q.y, q.r, q.r * 1.6); });
+  requestAnimationFrame(frame);
+}
+if (!matchMedia("(prefers-reduced-motion:reduce)").matches) requestAnimationFrame(frame);
+
+/* ===== H. Source viewer + analytics ===== */
+// Count-up animation for the statistics (0 up to the final number in 0.7 seconds).
+function countUp(el, to) { var s = performance.now(); (function tick(n) { var k = Math.min((n - s) / 700, 1); el.textContent = (to % 1 ? (to * k).toFixed(1) : Math.round(to * k)); if (k < 1) requestAnimationFrame(tick); })(s); }
+// Source statistics: lines with and without comments, characters with and without spaces, size in KB. 'Without comments' is an approximation (it strips block comments and lines starting with //), not a parser.
+function analytics() {
+  var lines = SOURCE.split("\n").length;
+  var stripped = SOURCE.replace(/<!--[\s\S]*?-->/g, "").replace(/\/\*[\s\S]*?\*\//g, "").split("\n").filter(function (l) { return l.trim() && l.trim().indexOf("//") !== 0; }).length;
+  var rows = [["Lines (with comments)", lines, "Every line in the file"], ["Lines (code only)", stripped, "Blank and comment lines removed"], ["Characters", SOURCE.length, "Including spaces"],
+    ["Characters (no spaces)", SOURCE.replace(/\s/g, "").length, "Whitespace removed"], ["Size (KB)", new Blob([SOURCE]).size / 1024, "UTF-8 byte size"]];
+  var box = $("stats"); box.textContent = "";
+  rows.forEach(function (r) { var d = document.createElement("div"), b = document.createElement("b"); d.title = r[2]; d.appendChild(b); d.appendChild(document.createTextNode(r[0])); box.appendChild(d); countUp(b, r[1]); });
+}
+function openSource() { $("code").value = SOURCE; analytics(); $("src").classList.add("on"); $("closeSrc").focus(); }
+$("viewSrc").addEventListener("click", function () { lastOpener = $("viewSrc"); requireKey(openSource); });
+$("closeSrc").addEventListener("click", function () { $("src").classList.remove("on"); $("viewSrc").focus(); }); // focus goes back to the button that opened it, the same as Escape
+$("cpSrc").addEventListener("click", function () { $("code").select(); (navigator.clipboard ? navigator.clipboard.writeText(SOURCE) : Promise.reject()).then(function () { toast("Source copied"); }, function () { document.execCommand("copy"); toast("Source copied"); }); });
+$("dlSrc").addEventListener("click", function () { download("index.html", "text/html", SOURCE); });
+/* ===== I. Code Review & Security Audit ===== */
+// Honest by design: "live" findings come from real checks on this page's DOM and source text.
+// FIXES is a developer-recorded log (not re-detected live); NOT_DONE lists what a page cannot verify itself.
+// AUDIT DATA: FIXES is a hand-written log of repairs (not re-detected live, and labelled that way in the report). NOT_DONE lists what a page cannot check about itself, because pretending otherwise would be the real vulnerability.
+var FIXES = [
+  ["Medium", "Calendar file could end before it started", "Events starting at 22:00 or later got an end hour that wrapped past midnight. End time is now computed with real dates (start + 2 hours)."],
+  ["Medium", "Past dates accepted when typed", "The date picker blocked past days, but typing one by hand slipped through. Validation now rejects any date before today."],
+  ["Medium", "Audio resource leak", "Every chime created a new AudioContext, which browsers cap. One shared context is now reused."],
+  ["Medium", "No Content-Security-Policy", "Added a CSP meta tag (no external loads, no network connections, no forms, no base tag) and a no-referrer policy."],
+  ["Low", "Fade-in timers could race", "Two quick taps could let an older timer overwrite a newer message. Timers are now cleared before restarting."],
+  ["Low", "Temporary download URLs never released", "Object URLs from downloads are now revoked after use."],
+  ["Low", "Accessibility gaps", "Added aria-pressed on single-choice chips, role=alert on error areas, aria-modal on dialogs, Escape-to-close with focus return, and removed the focus ring on programmatically focused headings."],
+  ["Informational", "Creator key gate added", "The source viewer and this report ask for a case-insensitive key every time. Three wrong keys lock the door for three years with a live countdown. Client-side only (see the finding above)."],
+  ["Informational", "Dead code removed", "Unused .cue style and unused state fields (date, time) were deleted."],
+  ["Informational", "Intention dropdown on the first page", "The open text box was replaced by a dropdown with four fixed choices. It is required, it is checked by the same gatekeeper as the name, and the live validation self-test covers it."],
+  ["Informational", "Finish-line polish and WhatsApp reply", "The audit button and the signature now appear only on the finish screens. Selected pills have a stronger cue (brighter fill, pale border, soft glow, a small pop) and no longer change size. The progress bar has five dashes with a 'Step N of 5' line. The keepsake screen can open WhatsApp with a neatly formatted message of her choices, built with textContent and encodeURIComponent. Its button pulses continuously, with a still glow when the phone asks for calm."],
+  ["Informational", "Instagram follow box", "The banner is now one link, so a tap anywhere in it opens the profile. The logo is drawn with CSS only (no image, no SVG) and only acts every few seconds. Both Instagram links now use the plain profile address, so the tracking-style query string is gone."],
+  ["Informational", "WhatsApp box restyled and moved up; scroll reveal", "The WhatsApp box now shares one design with the Instagram box (same layout, padding, border and effects) in WhatsApp's black and green, and sits right under it near the top of the finish screen. Blocks glide in as they scroll into view; nothing is hidden unless the browser's scroll-watcher has reported in and the phone has not asked for calm."],
+  ["Informational", "Layout and design pass", "The finish screen now leads with 'It's a date.' and the plan, shown once, then WhatsApp, the save buttons and one merged Instagram box. The progress dashes stay fixed at the top on every step, and the first page fits its Begin button on a small phone. From 900px wide each step splits into a question side and an answer side. One shared card style replaced seven. Removed: the drifting colour clouds, the purple tones, the stripe on the personal note, pill-shaped corners, glow and lift effects and the emoji headings. Added: Privacy policy and Terms of service on every screen, a focus trap inside dialogs, and a WhatsApp message drawer that opens on tap and plays its typing moment then."],
+  ["Informational", "Earlier revisions", "Progress dots now match the steps, the footer no longer covers the Instagram button, and the Yes button no longer overlaps No."]
+];
+var NOT_DONE = [
+  ["Medium", "Hosting security headers", "HSTS, X-Content-Type-Options, frame-ancestors and similar headers are set by the server. A page cannot set or read them, so this was not checked. Static hosts such as GitHub Pages limit what you can configure."],
+  ["Medium", "Penetration testing / fuzzing", "No attacker-style testing was performed. This report is a self-check, not a professional audit."],
+  ["Low", "Colour-contrast measurement (partly done)", "Partly done. A script measured the visible text on every screen, dialog and this report in this revision (more than 400 items). Every one meets 4.5 to 1, and the lowest is about 5.5 to 1. The three colours of the shining question were calculated by hand (all above 5 to 1). Hover and focus states, the drifting hearts and in-between animation frames were not measured, and no colour-blindness tool was used."],
+  ["Low", "Screen-reader testing", "Only structural accessibility attributes are checked. TalkBack, VoiceOver and NVDA were not tried."],
+  ["Low", "Cross-browser and device matrix", "Only feature detection in the current browser runs here. Safari, Firefox and older Android browsers were not tested."],
+  ["Low", "Full HTML / CSS validation", "Browsers silently repair bad markup, so a page cannot validate itself. Use the W3C validators for a formal result."],
+  ["Informational", "Performance profiling", "Frame rate, battery use and memory were not measured, only size and node counts."],
+  ["Informational", "Dependency vulnerability scan", "Nothing to scan: the live check below confirms there are no external scripts or libraries."]
+];
+function J() { return Array.prototype.join.call(arguments, ""); } // joins pieces so the scanner below doesn't flag its own source
+// THE REAL CHECKS: scans this page's DOM and source text and returns findings. Each finding has a category, severity and state (Passed or Detected). Limits: pattern scans can miss clever code and can false-alarm; it is a smoke detector, not a firefighter.
+function liveChecks() {
+  var out = [], src = SOURCE, KNOWN_HOSTS = ["instagram.com", "wa.me"]; // the two outbound links this page is meant to have: her Instagram follow, and the WhatsApp reply button
+  function add(cat, sev, state, title, detail) { out.push({ cat: cat, sev: sev, state: state, title: title, detail: detail }); }
+  function hit(p) { return new RegExp(p).test(src); }
+  function nameOf(el) { return (el.getAttribute("aria-label") || (el.labels && el.labels.length ? el.labels[0].textContent : "") || el.textContent || el.getAttribute("placeholder") || "").trim(); }
+  var all = Array.prototype.slice.call(document.querySelectorAll("*"));
+
+  // --- Security ---
+  var sinks = [[J("\\bev", "al\\s*\\("), "dynamic code evaluation"], [J("new\\s+Func", "tion\\s*\\("), "Function constructor"], [J("document\\.wr", "ite\\s*\\("), "document write"],
+    [J("\\.(inner", "HTML|outer", "HTML)\\s*=(?!=)"), "HTML string assignment"], [J("insertAdjacent", "HTML"), "insertAdjacent HTML"]]
+    .filter(function (x) { return hit(x[0]); }).map(function (x) { return x[1]; });
+  sinks.length ? add("Security", "High", "Detected", "Unsafe code or HTML sinks found", sinks.join(", ")) :
+    add("Security", "Informational", "Passed", "No unsafe sinks in page source", "Scanned for 5 patterns (dynamic evaluation, Function constructor, document write, HTML string assignment, insertAdjacent). User text is inserted with textContent, so typed names or notes cannot become markup.");
+  var inline = all.filter(function (el) { return Array.prototype.some.call(el.attributes, function (a) { return /^on/i.test(a.name); }); }).length;
+  add("Security", inline ? "Low" : "Informational", inline ? "Detected" : "Passed", inline ? inline + " inline event handler attribute(s)" : "No inline event-handler attributes", inline ? "Move them to addEventListener." : "All events are attached from the script.");
+  hit(J("(api[_-]?key|sec", "ret|pass", "word|bearer)\\s*[:=]\\s*[\"'][^\"']{6,}") + "|" + J("sk-[A-Za-z0-9]{20,}|AKIA", "[0-9A-Z]{16}")) ?
+    add("Security", "Critical", "Detected", "Possible hard-coded secret", "A key-like assignment was found in the source. Remove it.") :
+    add("Security", "Informational", "Passed", "No key or password patterns found", "Pattern-based only; it cannot recognise every kind of secret.");
+  var ext = document.querySelectorAll("script[src],link[href],img[src],iframe,embed,object,form[action]").length;
+  add("Security", ext ? "High" : "Informational", ext ? "Detected" : "Passed", ext ? ext + " external or embedded resource element(s)" : "No external scripts, styles, images, frames or forms", ext ? "Review each one." : "Nothing is loaded from third parties, so there is no third-party supply-chain exposure.");
+  var links = Array.prototype.slice.call(document.querySelectorAll("a[href]")), badRel = links.filter(function (a) { return a.target === "_blank" && !/noopener/.test(a.rel); }).length;
+  var hosts = {}; (src.match(/https?:\/\/[^\s"'<>)\\]+/g) || []).forEach(function (u) { hosts[u.replace(/^https?:\/\/([^\/?#]+).*/, "$1")] = 1; });
+  var hostList = Object.keys(hosts), foreign = hostList.filter(function (h) { return !KNOWN_HOSTS.some(function (k) { return h.indexOf(k) > -1; }); });
+  add("Security", foreign.length ? "Medium" : "Informational", foreign.length ? "Detected" : "Passed", "Hosts referenced in source: " + (hostList.join(", ") || "none"), foreign.length ? "Unexpected host(s): " + foreign.join(", ") : "Only the two expected links: the Instagram profile and the WhatsApp reply button. Each opens in a new tab only when tapped.");
+  add("Security", badRel ? "Medium" : "Informational", badRel ? "Detected" : "Passed", badRel ? badRel + " new-tab link(s) without noopener" : "New-tab links use rel=noopener noreferrer", "Stops the opened page from controlling this one.");
+  var tracked = links.filter(function (a) { return a.href.indexOf("?") > -1 && a.hostname !== "wa.me"; }).length; // the WhatsApp link's query string is the pre-written message, so it is expected
+  if (tracked) add("Privacy", "Low", "Detected", "Outbound link carries a query string", "A link to another site ends with a query string, which can be a tracking id. The plain profile address works without it.");
+  var apis = [[J("local", "Storage"), J("local", "Storage")], [J("session", "Storage"), J("session", "Storage")], [J("indexed", "DB"), J("indexed", "DB")], [J("document\\.coo", "kie"), "cookies"], [J("\\bfe", "tch\\s*\\("), "network requests"],
+    [J("XMLHttp", "Request"), "XHR"], [J("send", "Beacon"), "beacon"], [J("Web", "Socket"), J("Web", "Socket")]].filter(function (x) { return hit(x[0]); }).map(function (x) { return x[1]; });
+  apis.length ? add("Privacy", "Medium", "Detected", "Storage or network APIs used", apis.join(", ") + ". Developer note (not verified by this scan): only the key gate uses it, saving its attempt counter and lock time, never her answers.") :
+    add("Privacy", "Informational", "Passed", "No storage or network APIs in the script", "The page's own code makes no network requests and saves nothing. Answers live in memory and vanish on reload.");
+  add("Privacy", "Informational", "Detected", "Personal details are collected on screen", "Name, place and note are typed by her. They leave the device only through actions she chooses (download, copy, calendar file, screenshot, or opening WhatsApp, whose link carries the pre-written message). A Privacy policy and Terms of service are linked from every screen. Hosting logs, browser extensions and the Instagram app are outside what this page can see.");
+  var csp = document.querySelector('meta[http-equiv="Content-Security-Policy"]'), cspText = csp ? csp.content : "";
+  !csp ? add("Security", "Medium", "Detected", "No Content-Security-Policy", "Add a CSP meta tag or server header.") :
+    /script-src[^;]*'unsafe-inline'/.test(cspText) ? add("Security", "Low", "Detected", "CSP present, but inline scripts are allowed", "A single self-contained file needs inline script, so scripts cannot be locked down further here. The policy still blocks external loads, network connections, forms and base-tag tricks. A server-set nonce or hash would be stronger.") :
+    add("Security", "Informational", "Passed", "CSP present without unsafe-inline scripts", cspText);
+  add("Security", window.top !== window.self ? "Medium" : "Informational", window.top !== window.self ? "Detected" : "Passed", window.top !== window.self ? "Page is running inside a frame" : "Page is not framed right now", "Clickjacking protection needs a server header (frame-ancestors); a page cannot enforce it on itself.");
+
+  // --- Code quality and correctness ---
+  RUNTIME_ERRORS.length ? add("Code quality", "High", "Detected", RUNTIME_ERRORS.length + " runtime error(s) captured since load", RUNTIME_ERRORS.slice(0, 3).join(" | ")) :
+    add("Code quality", "Informational", "Passed", "No runtime errors captured since the page loaded", "Only errors that have already happened are visible; untested paths may still fail.");
+  var seen = {}, dup = [];
+  all.forEach(function (el) { if (el.id) { if (seen[el.id]) dup.push(el.id); seen[el.id] = 1; } });
+  add("Code quality", dup.length ? "Medium" : "Informational", dup.length ? "Detected" : "Passed", dup.length ? "Duplicate ids: " + dup.join(", ") : "No duplicate ids", "Duplicate ids break lookups and labels.");
+  var refs = {}, broken = []; (src.match(/\$\("([\w-]+)"\)/g) || []).forEach(function (m) { refs[m.slice(3, -2)] = 1; });
+  Object.keys(refs).forEach(function (id) { if (!document.getElementById(id)) broken.push(id); });
+  add("Code quality", broken.length ? "High" : "Informational", broken.length ? "Detected" : "Passed", broken.length ? "Script looks up missing ids: " + broken.join(", ") : "Every id the script looks up exists (" + Object.keys(refs).length + " checked)", "Catches typos that would crash a button.");
+  var unref = Object.keys(seen).filter(function (id) { return src.split('"' + id + '"').length < 3 && src.indexOf("#" + id) < 0; });
+  add("Code quality", "Informational", unref.length ? "Detected" : "Passed", unref.length + " id(s) never referenced by script or CSS", unref.slice(0, 8).join(", ") || "None. Harmless, but a tidy-up candidate.");
+  var notes = (src.match(/\/\*|<!--|(^|[\s;{])\/\/ /gm) || []).length, fns = (src.match(/function\s+\w+/g) || []).length;
+  add("Code quality", "Informational", "Passed", "Size and structure", src.split("\n").length + " lines, about " + (new Blob([src]).size / 1024).toFixed(1) + " KB, " + fns + " named functions, roughly " + notes + " comment markers.");
+  var gOk = [J("av", "neet"), J("AV", "NEET"), J("aVN", "eET"), " " + J("Av", "neet") + " "].every(keyOk), gNo = ["", "avnee", "avneets", "xyz"].some(keyOk);
+  add("Security", gOk && !gNo ? "Informational" : "High", gOk && !gNo ? "Passed" : "Detected", "Key gate self-test: " + (gOk && !gNo ? "case variants accepted, wrong keys rejected" : "unexpected result"), "Tested 4 accepted spellings and 4 wrong keys against the stored hash. Note that, by request, the key is also named in a comment in the HTML.");
+  add("Security", "Medium", "Detected", "Source viewer and audit are behind a client-side key only", "By request, the key is named in a comment inside the file, and the hash and whole source are readable from the browser or hosting site. The three-year lock is kept in this browser, so clearing site data or changing the clock undoes it. This is a playful courtesy lock, not security. Real protection needs server-side access control.");
+  // live self-test of the validation rules (values are restored straight afterwards)
+  var keep = { to: $("to").value, intent: $("intent").selectedIndex, date: $("date").value, time: $("time").value, place: $("place").value, note: $("note").value, moods: state.moods.slice() }, ok = [], bad = [];
+  function t(n, c) { (c ? ok : bad).push(n); }
+  try {
+    $("to").value = "  "; t("blank name stops step 1", reqStep(1) === 0);
+    $("to").value = "A"; $("intent").selectedIndex = 0; t("no intention stops step 1", reqStep(1) === 0);
+    $("intent").selectedIndex = 1; state.moods = []; t("no mood stops step 2", reqStep(2) === 1);
+    state.moods = ["x"]; $("date").value = "2000-01-01"; t("past date stops step 3", reqStep(3) === 2);
+    $("date").value = iso(new Date()); $("time").value = "19:00"; $("place").value = ""; $("note").value = "n"; t("empty place stops step 4", reqStep(4) === 3);
+    $("place").value = "p"; t("complete answers pass", reqStep(6) === -1);
+  } finally { $("to").value = keep.to; $("intent").selectedIndex = keep.intent; $("date").value = keep.date; $("time").value = keep.time; $("place").value = keep.place; $("note").value = keep.note; state.moods = keep.moods; }
+  add("Forms", bad.length ? "High" : "Informational", bad.length ? "Detected" : "Passed", "Validation self-test: " + ok.length + " passed, " + bad.length + " failed", bad.length ? "Failed: " + bad.join("; ") : ok.join("; "));
+  var txt = Array.prototype.slice.call(document.querySelectorAll('input[type="text"],input:not([type]),textarea')), noMax = txt.filter(function (x) { return !x.readOnly && (!x.maxLength || x.maxLength < 0); }).length;
+  add("Forms", noMax ? "Low" : "Informational", noMax ? "Detected" : "Passed", noMax ? noMax + " text field(s) without a length limit" : "All text fields have a length limit", "Limits keep pasted junk out of the keepsake image and calendar file. Real validation is the script above, not these attributes.");
+
+  // --- Accessibility and responsiveness ---
+  var vp = (document.querySelector('meta[name="viewport"]') || {}).content || "";
+  var noName = Array.prototype.slice.call(document.querySelectorAll("button,a[href],input,textarea,select")).filter(function (el) { return !nameOf(el); }).length;
+  add("Accessibility", document.documentElement.lang ? "Informational" : "Medium", document.documentElement.lang ? "Passed" : "Detected", document.documentElement.lang ? "Page language is declared (" + document.documentElement.lang + ")" : "No lang attribute", "Helps screen readers pick a voice.");
+  add("Accessibility", /user-scalable\s*=\s*no|maximum-scale\s*=\s*1(\.0)?\b/.test(vp) ? "Medium" : "Informational", /user-scalable\s*=\s*no|maximum-scale\s*=\s*1(\.0)?\b/.test(vp) ? "Detected" : "Passed", "Pinch-zoom " + (/user-scalable\s*=\s*no|maximum-scale\s*=\s*1(\.0)?\b/.test(vp) ? "is blocked" : "is allowed"), vp);
+  add("Accessibility", noName ? "Medium" : "Informational", noName ? "Detected" : "Passed", noName ? noName + " control(s) without an accessible name" : "Every button, link and field has a name", "Checked: aria-label, a linked label, visible text or placeholder.");
+  var okA = hit("prefers-reduced-motion") && hit(":focus-visible") && document.querySelectorAll("[aria-live],[role=alert]").length > 0;
+  add("Accessibility", okA ? "Informational" : "Medium", okA ? "Passed" : "Detected", "Reduced-motion rule, focus ring and live regions", okA ? "All three present. Their quality was not tested with assistive technology." : "At least one is missing.");
+  var wide = document.documentElement.scrollWidth > window.innerWidth + 1;
+  add("Responsiveness", wide ? "Medium" : "Informational", wide ? "Detected" : "Passed", wide ? "Page scrolls sideways at " + window.innerWidth + "px" : "No sideways scrolling at " + window.innerWidth + "px", "Measured at the current window size only.");
+
+  // --- Performance and compatibility ---
+  add("Performance", "Informational", "Passed", "Weight", all.length + " DOM elements, " + (src.match(/@keyframes/g) || []).length + " keyframe animations, no images or fonts to download. One light canvas loop runs (paused by browsers in hidden tabs, off with reduced motion).");
+  var feats = [["IntersectionObserver", "IntersectionObserver" in window, "card appears without the zoom"], ["Web Audio", !!(window.AudioContext || window.webkitAudioContext), "chimes stay silent"], ["Clipboard API", !!navigator.clipboard, "copy falls back to the old method"],
+    ["Blob URLs", !!(window.URL && URL.createObjectURL), "downloads unavailable"],
+    ["canvas toBlob", !!HTMLCanvasElement.prototype.toBlob, "image download unavailable"]], miss = feats.filter(function (f) { return !f[1]; });
+  add("Compatibility", miss.length ? "Low" : "Informational", miss.length ? "Detected" : "Passed", miss.length ? "Missing in this browser: " + miss.map(function (f) { return f[0] + " (" + f[2] + ")"; }).join(", ") : "All " + feats.length + " features this page uses are available here", "Feature detection in this browser only.");
+  return out;
+}
+// Draws the report with textContent only, grouped by category, with severity colours, live results first, then recorded fixes, then the honest 'not performed' list.
+function renderAudit() {
+  var body = $("auditBody"); body.textContent = "";
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; }
+  var live = liveChecks(), items = live.concat(
+    FIXES.map(function (f) { return { cat: "Fixes applied in this revision (recorded by the developer, not re-detected live)", sev: f[0], state: "Fixed", title: f[1], detail: f[2] }; }),
+    NOT_DONE.map(function (f) { return { cat: "Checks that could not be performed", sev: f[0], state: "Not performed", title: f[1], detail: f[2] }; }));
+  var n = function (st) { return items.filter(function (i) { return i.state === st; }).length; };
+  var intro = el("p", "", "Checked " + new Date().toLocaleString() + ". This is a self-check the page runs on its own code and screen. It is not a professional security audit, and a clean result does not mean the file is secure.");
+  intro.style.cssText = "font-size:.9rem;opacity:.85;line-height:1.5"; body.appendChild(intro);
+  var sum = el("p", "", "Live checks: " + live.filter(function (i) { return i.state === "Passed"; }).length + " passed, " + live.filter(function (i) { return i.state === "Detected"; }).length + " detected. Fixed: " + n("Fixed") + ". Not performed: " + n("Not performed") + ".");
+  sum.style.cssText = "margin:8px 0;color:var(--gold)"; body.appendChild(sum);
+  var last = "";
+  items.forEach(function (i) {
+    if (i.cat !== last) { body.appendChild(el("h3", "", i.cat)); last = i.cat; }
+    var d = el("div", "fi sev-" + i.sev.toLowerCase().replace(/[^a-z]/g, "")), head = el("div");
+    head.appendChild(el("span", "badge st-" + i.state.toLowerCase().replace(/ /g, ""), i.state)); head.appendChild(el("span", "badge sv-" + i.sev.toLowerCase().replace(/[^a-z]/g, ""), i.sev)); head.appendChild(el("strong", "", i.title));
+    d.appendChild(head); d.appendChild(el("p", "", i.detail)); body.appendChild(d);
+  });
+}
+/* ===== J. Key gate ===== */
+// THE DOORMAN: the code compares a short hash of what she types (cyrb53, a small non-cryptographic hash) after trimming and lower-casing,
+// so any mix of upper and lower case opens the door. By request, the key is ALSO named in a romantic riddle in a comment above the door
+// in the HTML, so anyone reading the file finds it at once.
+// HONEST LIMIT: this is a courtesy lock, not security. The whole source sits in the file, the hash is short and unsalted, and the lock timer
+// below lives in the browser, so clearing site data or changing the device clock undoes it. Real access control needs a server.
+// THREE-YEAR LOCK: three wrong keys in a row close the door for three years. The counter and unlock time are saved in this browser
+// (localStorage, try/catch protected; without it the lock lasts only until reload). Only those two numbers are stored, never her answers.
+var GATE_HASH = 3766016581818323, pending = null, fails = 0, lockUntil = 0, lockTick = null, STORE = "gate_state", LOCK_MS = 3 * 31557600 * 1000;
+function cyrb53(str, seed) {
+  var h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+  for (var i = 0, ch; i < str.length; i++) { ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+}
+function keyOk(v) { return cyrb53(String(v).trim().toLowerCase(), 7) === GATE_HASH; }
+try { var saved = JSON.parse(localStorage.getItem(STORE) || "{}"); fails = +saved.f || 0; lockUntil = +saved.u || 0; } catch (e) { /* storage blocked: lock lasts until reload */ }
+function saveGate() { try { localStorage.setItem(STORE, JSON.stringify({ f: fails, u: lockUntil })); } catch (e) { /* ignore */ } }
+// Turns milliseconds into "2 years, 364 days, 23:59:58" (ceil, so a fresh lock reads exactly 3 years)
+function fmtLeft(ms) {
+  var s = Math.max(0, Math.ceil(ms / 1000)), y = Math.floor(s / 31557600); s -= y * 31557600;
+  var d = Math.floor(s / 86400); s -= d * 86400; var h = Math.floor(s / 3600); s -= h * 3600; var m = Math.floor(s / 60); s -= m * 60;
+  return y + (y === 1 ? " year, " : " years, ") + d + (d === 1 ? " day, " : " days, ") + pad(h) + ":" + pad(m) + ":" + pad(s);
+}
+// Shows or hides the lock panel and starts the one-second ticking timer. The tick stops itself when the dialog closes.
+function refreshLock() {
+  var left = lockUntil - Date.now(), locked = left > 0;
+  $("gateLock").style.display = locked ? "block" : "none"; $("gateKey").disabled = locked; $("gateOk").disabled = locked;
+  clearInterval(lockTick);
+  if (!locked) return;
+  $("gateErr").textContent = ""; $("gateTimer").textContent = fmtLeft(left);
+  lockTick = setInterval(function () {
+    if (!$("gate").classList.contains("on")) { clearInterval(lockTick); return; }
+    if (Date.now() >= lockUntil) { lockUntil = 0; fails = 0; saveGate(); refreshLock(); return; }
+    $("gateTimer").textContent = fmtLeft(lockUntil - Date.now());
+  }, 1000);
+}
+// Asks for the key EVERY time, on every click of View source or Code Review. Nothing is remembered, so closing the panel locks the door again.
+function requireKey(then) {
+  pending = then; $("gateKey").value = ""; $("gateErr").textContent = ""; $("gate").classList.add("on"); refreshLock();
+  if (!$("gateKey").disabled) $("gateKey").focus();
+}
+var WRONG = ["That's not it. Don't worry, I'm not counting. Okay, I am. Two tries left.",
+  "Not quite. One more wrong guess and this door stays shut for three years. Choose wisely."];
+function tryKey() {
+  if (Date.now() < lockUntil) { refreshLock(); return; }
+  if (keyOk($("gateKey").value)) {
+    fails = 0; lockUntil = 0; saveGate(); $("gate").classList.remove("on");
+    var go = pending; pending = null; if (go) go();
+    return;
+  }
+  fails++; $("gateKey").value = "";
+  if (fails >= 3) { lockUntil = Date.now() + LOCK_MS; saveGate(); refreshLock(); }
+  else { saveGate(); $("gateErr").textContent = WRONG[fails - 1]; }
+  var box = $("gate").firstElementChild; box.classList.remove("shake"); void box.offsetWidth; box.classList.add("shake");
+}
+$("gateOk").addEventListener("click", tryKey);
+$("gateKey").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); tryKey(); } });
+$("gateCancel").addEventListener("click", function () { $("gate").classList.remove("on"); pending = null; if (lastOpener) lastOpener.focus(); });
+var lastOpener = null;
+function openAudit() { lastOpener = $("auditBtn"); renderAudit(); $("audit").classList.add("on"); $("auditClose").focus(); }
+$("auditBtn").addEventListener("click", function () { lastOpener = $("auditBtn"); requireKey(openAudit); });
+$("auditRun").addEventListener("click", renderAudit);
+$("auditClose").addEventListener("click", function () { $("audit").classList.remove("on"); $("auditBtn").focus(); });
+/* ===== J2. Privacy policy and Terms of service ===== */
+// One small dialog, two short documents. The two tabs switch which one shows (the other gets the hidden attribute). Everything is plain text already in the page, so nothing is loaded. Opening remembers the button that opened it, and closing hands focus back, exactly like the other dialogs. Could go wrong: lastOpener is shared by all the dialogs, so only one dialog may be open at a time (they are all full-screen, so that is how it works).
+function showLegal(which) {
+  var p = which !== "terms";
+  $("legalP").hidden = !p; $("legalT").hidden = p;
+  $("legalTabP").setAttribute("aria-pressed", String(p)); $("legalTabT").setAttribute("aria-pressed", String(!p));
+  $("legalBody").scrollTop = 0;
+}
+function openLegal(which, opener) { lastOpener = opener; showLegal(which); $("legal").classList.add("on"); $("legalClose").focus(); }
+$("openPrivacy").addEventListener("click", function () { openLegal("privacy", this); });
+$("openTerms").addEventListener("click", function () { openLegal("terms", this); });
+$("legalTabP").addEventListener("click", function () { showLegal("privacy"); });
+$("legalTabT").addEventListener("click", function () { showLegal("terms"); });
+$("legalClose").addEventListener("click", function () { $("legal").classList.remove("on"); if (lastOpener) lastOpener.focus(); });
+// Escape closes any open dialog and returns focus to the button that opened it, as keyboard users expect.
+var DIALOGS = ["gate", "audit", "src", "legal"];
+document.addEventListener("keydown", function (e) { // Escape closes whichever dialog is open and hands focus back
+  if (e.key === "Escape" && DIALOGS.some(function (id) { return $(id).classList.contains("on"); })) {
+    DIALOGS.forEach(function (id) { $(id).classList.remove("on"); }); pending = null; if (lastOpener) lastOpener.focus();
+  }
+});
+// FOCUS TRAP: while a dialog is open, Tab and Shift+Tab walk only around the controls INSIDE it, so a keyboard user cannot wander into the page behind it. At the last control Tab jumps back to the first, and Shift+Tab at the first jumps to the last. Only controls that are actually visible count. If focus is somewhere behind the dialog, the next Tab brings it inside.
+document.addEventListener("keydown", function (e) {
+  if (e.key !== "Tab") return;
+  var d = DIALOGS.map(function (id) { return $(id); }).filter(function (x) { return x.classList.contains("on"); })[0]; if (!d) return;
+  var f = Array.prototype.filter.call(d.querySelectorAll("button,[href],input,textarea,select,[tabindex]:not([tabindex='-1'])"), function (x) { return !x.disabled && x.getClientRects().length > 0; });
+  if (!f.length) return;
+  var first = f[0], last = f[f.length - 1];
+  if (!d.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+  else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+});
+$("yr").textContent = new Date().getFullYear();
+syncChips();
+whisperFor(0);
+/* ===== K. The honest lines on the first page: one sentence at a time ===== */
+// HONEST LINES DIRECTOR: tells the first-page sentences when to start and when the show is over. All the looks live in the CSS (section 7); this only flips two switches: .vals-live means "get ready, start hidden" and .go means "now play".
+// Calm mode (reduced motion) never gets the switches, so those words just sit there fully visible. The show waits until 40 percent of the block is on screen, so a small phone that has to scroll still sees it from the first word. Tapping the block skips to the end.
+// The show is over when the last underline finishes, when she taps the block, or when she leaves the first screen mid-show (the browser cancels the animations). Both switches are then removed, so the block rests exactly as the last frame looked and never replays when she taps Back.
+// Could go wrong: the safety timer is only a net for a browser that never reports the end of an animation; without IntersectionObserver the show simply starts at once.
+(function () {
+  var box = $("vals"), io = null, safety = null;
+  if (!box || matchMedia("(prefers-reduced-motion:reduce)").matches) return; // no block, or she asked for calm: leave the words at rest
+  function finish() { // back to the resting look: every sentence visible, every key phrase underlined (safe to call twice)
+    clearTimeout(safety); if (io) io.disconnect();
+    box.classList.remove("vals-live", "go");
+  }
+  function play() { box.classList.add("go"); safety = setTimeout(finish, 15000); }
+  box.classList.add("vals-live"); // get ready: everything starts hidden
+  box.addEventListener("click", finish); // a tap skips to the end
+  box.addEventListener("animationcancel", finish); // she left the first screen mid-show
+  box.addEventListener("animationend", function (e) { if (e.animationName === "valsDraw" && e.target.classList.contains("hl-c")) finish(); }); // the very last animation just ended
+  if (!("IntersectionObserver" in window)) { play(); return; }
+  io = new IntersectionObserver(function (es) { if (es[0].isIntersecting) { io.disconnect(); play(); } }, { threshold: .4 });
+  io.observe(box);
+})();
+</script>
+</body>
+</html>
